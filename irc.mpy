@@ -1973,7 +1973,7 @@ else:
 #------------------------------------------------------------------------------------------------------
 
 if config.enable_pushover:
-    push = pushover.PushoverClient( SCRIPTDIR + ".pushover")
+    push = pushover.PushoverClient( SCRIPTDIR + "pushover.config")
 
 #------------------------------------------------------------------------------------------------------
 # adjust nickname
