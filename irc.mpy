@@ -1,0 +1,2032 @@
+# -*- coding: utf-8 -*-
+# iCHAT 2.12 (c) opicron 2021-2022
+#
+# Licence: GPL
+
+# !!!!TEST WITH HEXCHAT!!!!
+
+# TODO:
+# - server switching (if host/port different)
+# - rewrite draw_prompt to take x/y(?)
+#
+# - use draw_prompt to draw chatbuffer too
+#    this will avoid doing the following:
+#       - block |MCI colors above 23
+#       - block various |MCI display codes
+#
+# - remember last input color?
+#     - by updating config.mci_default_fg / bg?
+#
+# - add mci idefault prompt code fg/bg color
+
+DEBUG = False
+
+#------------------------------------------------------------------------------------------------------
+# imports
+#------------------------------------------------------------------------------------------------------
+
+
+import re, os, sys, time, socket, traceback, threading #, ssl
+
+from threading import Thread
+from mystic_bbs import *               
+
+
+###################################################################################################################
+# Configuration
+###################################################################################################################
+
+# add script path to import
+SCRIPTDIR = getcfg()['script']+'irc'+os.sep    
+sys.path.append(SCRIPTDIR)                      
+
+import config
+
+# make sure default settings are loaded
+if not hasattr(config, 'max_chat_lines'):   config.max_chat_lines   = 18
+if not hasattr(config, 'max_nick_len'):     config.max_nick_len     = 13
+if not hasattr(config, 'server_id'):        config.server_id        = 1
+if not hasattr(config, 'max_servers'):      config.max_servers      = 10
+if not hasattr(config, 'host'):     
+    config.host= [0 for i in range(config.max_servers)]
+    config.host[0] = "irc.opicron.eu"
+    host[1] = "irc.opicron.eu"
+if not hasattr(config, 'post'): 
+    config.port = [0 for i in range(config.max_servers)]
+    config.port[0] = 6667
+    config.port[1] = 6667
+if not hasattr(config, 'channel'): 
+    config.channel = [0 for i in range(config.max_servers)]
+    config.channel[0] = "#General"
+    config.channel[1] = "#Trivia"
+if not hasattr(config, 'password'): 
+    config.password = [0 for i in range(config.max_servers)]
+    config.password[0] = "iChatGen"
+    config.password[1] = "iChatTriv"
+if not hasattr(config, 'enable_pushover'):      config.enable_pushover      = False
+if not hasattr(config, 'pager_host'):           config.pager_host           = ""
+if not hasattr(config, 'pager_port'):           config.pager_port           = 6667
+if not hasattr(config, 'pager_channel'):        config.pager_channel        = ""
+if not hasattr(config, 'pager_password'):       config.pager_password       = ""
+if not hasattr(config, 'mci_clearscr'):         config.mci_clearscr         = '|07|16|CL'
+if not hasattr(config, 'filename_pager'):       config.filename_pager       = 'pager.ans'
+if not hasattr(config, 'filename_chatscreen'):  config.filename_chatscreen  = 'chat.ans'
+if not hasattr(config, 'strip_irc_codes'):      config.strip_irc_codes      = False
+if not hasattr(config, 'mci_notice'):           config.mci_notice           = '|14'
+if not hasattr(config, 'mci_error'):            config.mci_error            = '|12'
+if not hasattr(config, 'mci_default_fg'):       config.mci_default_fg       = '|07'
+if not hasattr(config, 'mci_default_bg'):       config.mci_default_bg       = '|16'
+if not hasattr(config, 'mci_clearline'):        config.mci_clearline        = '|[K'
+if not hasattr(config, 'mci_channel_clearline'): config.mci_channel_clearline = '|$X48 '
+if not hasattr(config, 'mci_topic_clearline'):  config.mci_topic_clearline  = '|$X78 '
+if not hasattr(config, 'mci_chat_xy'):          config.mci_chat_xy          = '|[X01|[Y05'
+if not hasattr(config, 'mci_chat_line_x'):      config.mci_chat_line_x      = '|[X01 '
+if not hasattr(config, 'mci_channel_color'):    config.mci_channel_color    = '|15'
+if not hasattr(config, 'mci_channel_name_xy'):  config.mci_channel_name_xy  = '|[X13|[Y02'
+if not hasattr(config, 'mci_topic_color'):      config.mci_topic_color      = '|15'
+if not hasattr(config, 'mci_channel_topic_xy'): config.mci_channel_topic_xy = '|[X13|[Y03'
+if not hasattr(config, 'add_timestamp'):        config.add_timestamp        = False
+if not hasattr(config, 'mci_chat_prompt_xy'):   config.mci_chat_prompt_xy   = '|[Y24|[X01'
+if not hasattr(config, 'mci_chat_prompt'):      config.mci_chat_prompt      = '|09 >> |15'
+if not hasattr(config, 'mci_prompt_len'):       config.mci_prompt_len       = 75
+if not hasattr(config, 'mci_bot_names'):        config.mci_bot_names        = ['FB']
+if not hasattr(config, 'mci_bot_prefix'):       config.mci_bot_prefix       = '|08[|09*|08] '
+if not hasattr(config, 'mci_chat_color'):       config.mci_chat_color       = '|15'
+if not hasattr(config, 'max_chat_lines'):       config.max_chat_lines       = 18
+if not hasattr(config, 'max_line_len'):         config.max_line_len         = 79
+if not hasattr(config, 'mci_whisper_prvmsg'):   config.mci_whisper_prvmsg   = "|08prvmsg|09>"
+if not hasattr(config, 'mci_whisper_prefix'):   config.mci_whisper_prefix   = '|08[|12*|08] '
+if not hasattr(config, 'mci_whisper_postfix'):  config.mci_whisper_postfix  = ''
+if not hasattr(config, 'mci_name_color'):       config.mci_name_color       = '|15'
+if not hasattr(config, 'mci_name_postfix'):     config.mci_name_postfix     = '|09: '
+if not hasattr(config, 'mci_action_color'):     config.mci_action_color     = '|09'
+if not hasattr(config, 'mci_join_color'):       config.mci_join_color       = '|08'
+if not hasattr(config, 'pager_bar_blank'):      config.pager_bar_blank      = '|16|08'+chr(176)
+if not hasattr(config, 'pager_bar_fill'):       config.pager_bar_fill       = '|16|11'+chr(178)
+if not hasattr(config, 'pager_bar_startpos'):   config.pager_bar_startpos   = '|[X23|[Y13'
+if not hasattr(config, 'pager_bar_length'):     config.pager_bar_length     = 46
+if not hasattr(config, 'pager_time_startpos'):  config.pager_time_startpos  = '|[X64|[Y11|09'
+if not hasattr(config, 'pager_connected'):      config.pager_connected      = '|[X10|[Y15|15status |08[|10connected|08]'
+if not hasattr(config, 'forced_exit_notice'):   config.forced_exit_notice   = "|[Y24|[X02|14press any key to exit..|[K|PN"
+if not hasattr(config, 'uppercase_first_key'):  config.uppercase_first_key  = False
+if not hasattr(config, 'user_polltime'):        config.user_polltime        = 200
+if not hasattr(config, 'sysop_polltime'):       config.sysop_polltime       = 100
+if not hasattr(config, 'poll_timeout'):         config.poll_timeout         = 250
+
+if not hasattr(config, 'mci_list_name_away_color'):     config.mci_list_name_away_color     = "|08"
+if not hasattr(config, 'mci_list_name_color'):          config.mci_list_name_color          = "|09"
+if not hasattr(config, 'mci_list_name_xy'):             config.mci_list_name_xy             = "|[X64|[Y05"
+if not hasattr(config, 'mci_list_name_top_char'):       config.mci_list_name_top_char       = ":"
+if not hasattr(config, 'mci_list_name_middle_char'):    config.mci_list_name_middle_char    = "|"
+if not hasattr(config, 'mci_list_name_bottom'):         config.mci_list_name_bottom         = "|01`--------------'"
+
+#------------------------------------------------------------------------------------------------------
+#import pager module
+#------------------------------------------------------------------------------------------------------
+
+if config.enable_pushover:
+    import pushover
+
+#------------------------------------------------------------------------------------------------------
+# key defines
+#------------------------------------------------------------------------------------------------------
+
+KEY_ESCAPE      = chr(27)
+KEY_ENTER       = chr(13)
+KEY_CTRLS       = chr(19)
+KEY_CTRLN       = chr(14)
+KEY_CTRLZ       = chr(26)
+KEY_UP          = chr(72)       
+KEY_DOWN        = chr(80)
+KEY_PGUP        = chr(73)
+KEY_PGDN        = chr(81)
+KEY_END         = chr(79)
+KEY_HOME        = chr(71)
+KEY_TAB         = chr(9)
+KEY_BACKSPACE   = chr(8)
+KEY_DEL         = chr(83)
+KEY_LEFT        = chr(75)
+KEY_RIGHT       = chr(77)
+
+#------------------------------------------------------------------------------------------------------
+# set globals
+#------------------------------------------------------------------------------------------------------
+
+MCI_LAST_FG     = ""
+MCI_LAST_BG     = ""
+
+error_halt      = False
+stop_threads    = False
+start_chat      = False
+redraw          = True
+drawhdr         = False
+drawusers       = True
+pollusers	    = False
+
+chatbuffer      = []
+ircbuffer       = []
+USERS           = []
+DEFUSERS        = []
+actions         = []
+
+
+###################################################################################################################
+# Defs
+###################################################################################################################
+
+
+#------------------------------------------------------------------------------------------------------
+def toggle_cursor( show = True ):
+
+    global cursor
+
+    # set global first value
+    try: cursor
+    except NameError: cursor = True 
+    
+    esc = chr(27) #'\x1B'
+    hidecursor = esc+'[?25l'
+    showcursor = esc+'[?25h'
+       
+    if cursor and show == False:
+        write( hidecursor )
+        cursor = False
+    
+    if not cursor and show == True:
+        write( showcursor )
+        cursor = True
+#------------------------------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------------------------------
+# concatenate array, starting at index
+#------------------------------------------------------------------------------------------------------
+def concat(str_arr, index = 0 ):
+
+    str = ""
+    count = 0
+    max = len( str_arr )
+
+    for word in str_arr:
+        if count >= index:
+            str += word
+            if count < max:
+                str = str + " "
+        count += 1
+
+    return str
+#------------------------------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+def drawpager():
+  write( config.mci_clearscr )
+  showfile( SCRIPTDIR + config.filename_pager, 0, False, False, False )  
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+def drawchat():
+  write( config.mci_clearscr )
+  showfile( SCRIPTDIR + config.filename_chatscreen, 0,False, False, False )  
+  write( config.mci_chat_prompt_xy + config.mci_clearline + config.mci_chat_prompt_xy + config.mci_chat_prompt )
+
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+def drawhelp():
+  write( config.mci_clearscr )
+  showfile( SCRIPTDIR + "irc_help.ans", 0, False, False, False )  
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+def updatebar(start_pos, index, total, height, vertical=True):
+
+    hdr_bar_low       = config.pager_bar_blank
+    hdr_bar_high      = config.pager_bar_fill
+
+    if vertical == True:
+      for i in range(0,height+1):
+          pos = mci_adjust_y( start_pos, i )
+          write(pos  +hdr_bar_low)
+      
+      y = 0
+      if total > 0: 
+          y = ( index * ( height + 1 ) ) // total        
+      pos = mci_adjust_y( start_pos, y )        
+      write( pos + hdr_bar_high )
+
+    else:
+
+      if index == 0:
+        for i in range(0,height):
+          pos = mci_adjust_x( start_pos, i )
+          write( pos + hdr_bar_low )
+
+      x = float(index) / total * height
+
+      i = 0
+      while i < x:
+        pos = mci_adjust_x( start_pos, i )  
+        write( pos + hdr_bar_high )   
+        i += 1
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+def stripmci (s):
+
+    #match only 00-19 and 20-23
+    s = re.sub( r'\|([0-1][0-9]|[2][0-3])', '', s )
+    
+    return s
+#------------------------------------------------------------------------------
+
+
+##########################################################################################################################
+# Regex 
+##########################################################################################################################
+
+strip_all      = re.compile('[\x02\x0F\x16\x1D\x1F]|\x03(\d{,2}(,\d{,2})?)?')
+strip_style    = re.compile('[\x02\x0F\x16\x1D\x1F]')
+
+#------------------------------------------------------------------------------
+# utf codes to ascii
+#------------------------------------------------------------------------------
+def utf_to_ascii( s ):
+    
+    dictionary = {
+        '\xe2\x96\x80':chr(223),
+        '\xe2\x96\x84':chr(220),
+        '\xe2\x96\x88':chr(219),
+        '\xe2\x96\x91':chr(176),
+        '\xe2\x96\x92':chr(177),
+        '\xe2\x96\x93':chr(178),
+        '\xe2\x80\x99':"'",
+        '\xe2\x80\x90':'-',
+        '\xe2\x80\x91':'-',
+        '\xe2\x80\x92':'-',
+        '\xe2\x80\x93':'-',
+        '\xe2\x80\x94':'-',
+        '\xe2\x80\x94':'-',
+        '\xe2\x80\x98':"'",
+        '\xe2\x80\x9b':"'",
+        '\xe2\x80\x9c':'"',
+        '\xe2\x80\x9c':'"',
+        '\xe2\x80\x9d':'"',
+        '\xe2\x80\x9e':'"',
+        '\xe2\x80\x9f':'"',
+        '\xe2\x80\xa6':'...',
+        '\xe2\x80\xb2':"'",
+        '\xe2\x80\xb3':"'",
+        '\xe2\x80\xb4':"'",
+        '\xe2\x80\xb5':"'",
+        '\xe2\x80\xb6':"'",
+        '\xe2\x80\xb7':"'",
+        '\xe2\x81\xba':"+",
+        '\xe2\x81\xbb':"-",
+        '\xe2\x81\xbc':"=",
+        '\xe2\x81\xbd':"(",
+        '\xe2\x81\xbe':")",
+
+        '\xc3\xa9':chr(130), # é
+        '\xc2\xa1':chr(173), # ¡ INVERTED EXCLAMATION MARK
+        '\xc2\xa2':chr(155), # ¢ CENT SIGN
+        '\xc2\xa3':chr(156), # £ POUND SIGN
+        #'\xc2\xa4':chr() ¤ CURRENCY SIGN
+        '\xc2\xa5':chr(157), # ¥ YEN SIGN
+        '\xc2\xa6':'|', # ¦ BROKEN BAR
+        # '\xc2\xa7' § SECTION SIGN
+        '\xc2\xa8':'"', # ¨ DIAERESIS
+        '\xc2\xa9':'(C)', # © COPYRIGHT SIGN
+        # '\xc2\xaa' ª FEMININE ORDINAL INDICATOR
+        '\xc2\xab':chr(174), # « LEFT-POINTING DOUBLE ANGLE QUOTATION MARK
+        '\xc2\xac':chr(170), # ¬ NOT SIGN
+        '\xc2\xad':'-', # ­ SOFT HYPHEN
+        '\xc2\xae':'(R)', # ® REGISTERED SIGN
+        '\xc2\xaf':'-', # ¯ MACRON
+        '\xc2\xb0':chr(248), # ° DEGREE SIGN
+        '\xc2\xb1':chr(241), # ± PLUS-MINUS SIGN
+        '\xc2\xb2':chr(253), # ² SUPERSCRIPT TWO
+        # '\xc2\xb3' ³ SUPERSCRIPT THREE
+        '\xc2\xb4':"'", # ´ ACUTE ACCENT
+        '\xc2\xb5':chr(230), # µ MICRO SIGN
+        # '\xc2\xb6' ¶ PILCROW SIGN
+        '\xc2\xb7':chr(249), # · MIDDLE DOT
+        '\xc2\xb8':chr(250), # ¸ CEDILLA
+        # '\xc2\xb9' ¹ SUPERSCRIPT ONE
+        # '\xc2\xba' º MASCULINE ORDINAL INDICATOR
+        '\xc2\xbb':'>>', # » RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
+        '\xc2\xbc':chr(172), # ¼ VULGAR FRACTION ONE QUARTER
+        '\xc2\xbd':chr(171), # ½ VULGAR FRACTION ONE HALF
+        # '\xc2\xbe' ¾ VULGAR FRACTION THREE QUARTERS
+        '\xc2\xbf':chr(168), # ¿ INVERTED QUESTION MARK
+
+        '\xc3\x80':chr(133), # À LATIN CAPITAL LETTER A WITH GRAVE
+        '\xc3\x81':chr(160), # Á LATIN CAPITAL LETTER A WITH ACUTE
+        '\xc3\x82':chr(131), # Â LATIN CAPITAL LETTER A WITH CIRCUMFLEX
+        '\xc3\x83':chr(131), # Ã LATIN CAPITAL LETTER A WITH TILDE
+        '\xc3\x84':chr(142), # Ä LATIN CAPITAL LETTER A WITH DIAERESIS
+        '\xc3\x85':chr(143), # Å LATIN CAPITAL LETTER A WITH RING ABOVE
+        '\xc3\x86':chr(146), # Æ LATIN CAPITAL LETTER AE
+        '\xc3\x87':chr(128), # Ç LATIN CAPITAL LETTER C WITH CEDILLA
+        '\xc3\x88':chr(144), # È LATIN CAPITAL LETTER E WITH GRAVE
+        '\xc3\x89':chr(144), # É LATIN CAPITAL LETTER E WITH ACUTE
+        '\xc3\x8a':chr(136), # Ê LATIN CAPITAL LETTER E WITH CIRCUMFLEX
+        '\xc3\x8b':chr(137), # Ë LATIN CAPITAL LETTER E WITH DIAERESIS
+        '\xc3\x8c':chr(141), # Ì LATIN CAPITAL LETTER I WITH GRAVE
+        '\xc3\x8d':chr(161), # Í LATIN CAPITAL LETTER I WITH ACUTE
+        '\xc3\x8e':chr(140), # Î LATIN CAPITAL LETTER I WITH CIRCUMFLEX
+        '\xc3\x8f':chr(139), # Ï LATIN CAPITAL LETTER I WITH DIAERESIS
+        '\xc3\x90':'D', # Ð LATIN CAPITAL LETTER ETH
+        '\xc3\x91':chr(165), # Ñ LATIN CAPITAL LETTER N WITH TILDE
+        '\xc3\x92':chr(149), # Ò LATIN CAPITAL LETTER O WITH GRAVE
+        '\xc3\x93':chr(162), # Ó LATIN CAPITAL LETTER O WITH ACUTE
+        '\xc3\x94':chr(147), # Ô LATIN CAPITAL LETTER O WITH CIRCUMFLEX
+        '\xc3\x95':chr(153), # Õ LATIN CAPITAL LETTER O WITH TILDE
+        '\xc3\x96':chr(153), # Ö LATIN CAPITAL LETTER O WITH DIAERESIS
+        '\xc3\x97':'x', # × MULTIPLICATION SIGN
+        '\xc3\x98':chr(237), # Ø LATIN CAPITAL LETTER O WITH STROKE
+        '\xc3\x99':chr(151), # Ù LATIN CAPITAL LETTER U WITH GRAVE
+        '\xc3\x9a':chr(163), # Ú LATIN CAPITAL LETTER U WITH ACUTE
+        '\xc3\x9b':chr(150), # Û LATIN CAPITAL LETTER U WITH CIRCUMFLEX
+        '\xc3\x9c':chr(154), # Ü LATIN CAPITAL LETTER U WITH DIAERESIS
+        '\xc3\x9d':'Y', # Ý LATIN CAPITAL LETTER Y WITH ACUTE
+        # '\xc3\x9e': Þ LATIN CAPITAL LETTER THORN
+        '\xc3\x9f':chr(225), # ß LATIN SMALL LETTER SHARP S
+        '\xc3\xa0':chr(133), # à LATIN SMALL LETTER A WITH GRAVE
+        '\xc3\xa1':chr(160), # á LATIN SMALL LETTER A WITH ACUTE
+        '\xc3\xa2':chr(131), # â LATIN SMALL LETTER A WITH CIRCUMFLEX
+        '\xc3\xa3':'a', # ã LATIN SMALL LETTER A WITH TILDE
+        '\xc3\xa4':chr(132), # ä LATIN SMALL LETTER A WITH DIAERESIS
+        '\xc3\xa5':chr(134), # å LATIN SMALL LETTER A WITH RING ABOVE
+        '\xc3\xa6':chr(145), # æ LATIN SMALL LETTER AE
+        '\xc3\xa7':chr(134), # ç LATIN SMALL LETTER C WITH CEDILLA
+        '\xc3\xa8':chr(138), # è LATIN SMALL LETTER E WITH GRAVE
+        '\xc3\xa9':chr(138), # é LATIN SMALL LETTER E WITH ACUTE
+        '\xc3\xaa':chr(136), # ê LATIN SMALL LETTER E WITH CIRCUMFLEX
+        '\xc3\xab':chr(137), # ë LATIN SMALL LETTER E WITH DIAERESIS
+        '\xc3\xac':chr(141), # ì LATIN SMALL LETTER I WITH GRAVE
+        '\xc3\xad':chr(161), # í LATIN SMALL LETTER I WITH ACUTE
+        '\xc3\xae':chr(140), # î LATIN SMALL LETTER I WITH CIRCUMFLEX
+        '\xc3\xaf':chr(139), # ï LATIN SMALL LETTER I WITH DIAERESIS
+        '\xc3\xb0':chr(235), # ð LATIN SMALL LETTER ETH
+        '\xc3\xb1':chr(164), # ñ LATIN SMALL LETTER N WITH TILDE
+        '\xc3\xb2':chr(149), # ò LATIN SMALL LETTER O WITH GRAVE
+        '\xc3\xb3':chr(162), # ó LATIN SMALL LETTER O WITH ACUTE
+        '\xc3\xb4':chr(147), # ô LATIN SMALL LETTER O WITH CIRCUMFLEX
+        '\xc3\xb5':'o', # õ LATIN SMALL LETTER O WITH TILDE
+        '\xc3\xb6':chr(148), # ö LATIN SMALL LETTER O WITH DIAERESIS
+        '\xc3\xb7':chr(246), # ÷ DIVISION SIGN
+        '\xc3\xb8':chr(237), # ø LATIN SMALL LETTER O WITH STROKE
+        '\xc3\xb9':chr(164), # ù LATIN SMALL LETTER U WITH GRAVE
+        '\xc3\xba':chr(164), # ú LATIN SMALL LETTER U WITH ACUTE
+        '\xc3\xbb':'u', # û LATIN SMALL LETTER U WITH CIRCUMFLEX
+        '\xc3\xbc':chr(129), # ü LATIN SMALL LETTER U WITH DIAERESIS
+        '\xc3\xbd':'y', # ý LATIN SMALL LETTER Y WITH ACUTE
+        # '\xc3\xbe' þ LATIN SMALL LETTER THORN
+        '\xc3\xbf':chr(152), # ÿ LATIN SMALL LETTER Y WITH DIAERESIS
+
+        '\xf9\xa4':'u',
+        '\xc4\x99':'e',
+        '\xc4\x97':'e',
+        '\xc4\x93':'e'
+    }
+
+    #clearly i am a codepage noob for manually converting unicode to ascii. -sigh-
+    #anybody got a better solution?
+
+    #replace extended chars with ascii counterparts
+    for key in dictionary.keys():
+        p = re.compile(key,re.UNICODE)
+        s = re.sub(p,dictionary[key],s) #or #s = re.sub(key,dictionary[key],s)
+
+
+    # replace unfound regular expression with underscore    
+    p1 = re.compile(ur'\xe2[\x00-\xFF][\x00-\xFF]',re.UNICODE) #"/[\x{2600}-\x{267F}]/u"  #in the range [\x{2600}-\x{267F}] (i.e. U+2600 to U+267F) # for future use
+    p2 = re.compile(ur'\xc3[\x00-\xFF]',re.UNICODE)
+    p3 = re.compile(ur'\xc2[\x00-\xFF]',re.UNICODE)
+
+    # safety pattern to get rid of everything above hex c2
+    p4 = re.compile(ur'[\xc2-\xd9][\x00-\xFF]',re.UNICODE)
+
+    s = re.sub(p1,chr(249),s)
+    s = re.sub(p2,chr(249),s)
+    s = re.sub(p3,chr(249),s)
+    s = re.sub(p4,chr(249),s)
+    
+    return s
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+def irc_fg_mci ( s ):
+    
+    if len(s) < 2:
+        return config.mci_default_fg+config.mci_default_bg
+
+    # !important return default background together with fg color
+    return {
+        ''  : '|07' + config.mci_default_bg,
+        '00' : '|15' + config.mci_default_bg, #irc white 00 to mci white 14
+        '01' : '|00' + config.mci_default_bg, #black
+        '02' : '|01' + config.mci_default_bg, #blue (navy)
+        '03' : '|02' + config.mci_default_bg, #green 
+        '04' : '|04' + config.mci_default_bg, #red
+        '05' : '|06' + config.mci_default_bg, #brown (maroon)
+        '06' : '|05' + config.mci_default_bg, #purple
+        '07' : '|12' + config.mci_default_bg, #orange
+        '08' : '|14' + config.mci_default_bg, #yellow
+        '09' : '|03' + config.mci_default_bg, #light green (lime)
+        '10' : '|10' + config.mci_default_bg, #teal (green/blue cyan)
+        '11' : '|11' + config.mci_default_bg, #light cyan (agua)
+        '12' : '|09' + config.mci_default_bg, #light blue (royal)
+        '13' : '|13' + config.mci_default_bg, #ping (light purple)
+        '14' : '|08' + config.mci_default_bg, #grey
+        '15' : '|07' + config.mci_default_bg, #light grey (silver) 
+    } [s]
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+def irc_bg_mci ( s ):
+
+    if len(s) < 2:
+        return config.mci_default_bg
+
+    return {
+        ''  : '|16', #black
+        '00' : '|24', #irc white 00 to mci white 14
+        '01' : '|16', #black 
+        '02' : '|17', #blue (navy)
+        '03' : '|18', #green 
+        '04' : '|20', #red
+        '05' : '|22', #brown (maroon)
+        '06' : '|21', #purple
+        '07' : '|20', #orange
+        '08' : '|20', #yellow
+        '09' : '|18', #light green (lime)
+        '10' : '|19', #teal (green/blue cyan)
+        '11' : '|19', #light cyan (agua)
+        '12' : '|17', #light blue (royal)
+        '13' : '|21', #ping (light purple)
+        '14' : '|23', #grey
+        '15' : '|23', #light grey (silver) 
+    } [s]
+#------------------------------------------------------------------------------
+
+                
+#------------------------------------------------------------------------------
+# convert irc color codes to mci color codes
+def irc_to_mci( s ):
+      
+    # if strip all irc codes is set        
+    if config.strip_irc_codes == True:        
+
+        #strip all irc codes and styles
+        s = strip_all.sub('',s)
+
+    else:           
+
+        #strip styles
+        s = strip_style.sub('',s)
+
+        # replace optional 2nd bg color with new escape code (\x04) and groups
+        s = re.sub('(\x03\d{,2}),(\d{,2})', r'\g<1>'+ chr(4) + r'\g<2>', s)
+
+        # replace foreground codes        
+        s = re.sub('\x03(\d{,2})?', lambda x: irc_fg_mci(x.group(1)), s)        
+
+        # replace background codes
+        s = re.sub('\x04(\d{,2})?', lambda x: irc_bg_mci(x.group(1)), s)
+           
+    return s
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+def mci_to_irc( s ):
+
+    colors = {
+        0 : '01', 
+        1 : '02',
+        2 : '03', 
+        3 : '09', 
+        4 : '04', 
+        5 : '06', 
+        6 : '05', 
+        7 : '15', 
+        8 : '14',
+        9 : '12', 
+        10 : '10', 
+        11 : '11', 
+        12 : '04', 
+        13 : '13', 
+        14 : '08', 
+        15 : '00', 
+        16 : '01', 
+        17 : '02', 
+        18 : '03', #green  
+        19 : '10', #cyan
+        20 : '05',
+        21 : '13', 
+        22 : '05', 
+        23 : '14'
+    }
+    
+    lastfg = colors[int(config.mci_default_fg[1:])]
+    lastbg = False #avoid setting black background on irc clients
+
+    pos = s.find("|")
+    while pos != -1:
+        color = ''
+        colorcode = s[pos+1:pos+3]
+
+        #only process digits
+        if colorcode.isdigit():
+            colorcode = int( colorcode )
+
+            if colorcode >= 0 and colorcode <= 15:
+
+                lastfg = colors[ colorcode ]
+                if lastbg != False:
+                    color = chr(3) + lastfg + ',' + lastbg
+                else:
+                    color = chr(3) + lastfg
+
+            elif colorcode >= 16 and colorcode <= 23:
+                lastbg = colors[colorcode]
+                color = chr(3) + lastfg + ',' + lastbg
+
+        s = s[:pos] + color + s[pos+3:]
+        pos = s.find( "|" )
+
+    return s
+#------------------------------------------------------------------------------
+
+
+def print_line( s ):
+
+    count = 0
+    while count < len( s ):
+        if s[count] == '|':
+
+            d1 = s[count+1:count+2]
+            d2 = s[count+2:count+3]
+
+            if ( d1.isdigit() and d2.isdigit() ): # or count > position:
+                colorcode = d1 + d2
+
+                if colorcode.isdigit():
+                    colorcode = int( colorcode )
+                    if colorcode >= 0 and colorcode <= 23:
+                        write(s[count:count+3])
+                        count += 2
+                    else:
+                        write(s[count])     
+            else:
+               write(s[count])
+        else:    
+            write(s[count])
+
+        count += 1
+
+
+#------------------------------------------------------------------------------
+# set global mci color codes up to position
+#------------------------------------------------------------------------------
+def get_mci_colors( s, position ):
+
+    global MCI_LAST_FG, MCI_LAST_BG
+
+    count = 0
+    mci_char = False
+    mci_count = 0
+    mci_str = "" #keep track of mci colors
+
+    LAST_BG = config.mci_default_bg
+    LAST_FG = config.mci_default_fg
+
+    for element in s:
+
+        if mci_char == True: 
+              
+            if len(mci_str) == 3:
+
+                if int(mci_str[1:]) in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]:
+                    LAST_FG = mci_str                    
+                    MCI_LAST_BG = LAST_BG
+                    MCI_LAST_FG = mci_str
+
+                if int(mci_str[1:]) in [16,17,18,19,20,21,22,23]:
+                    LAST_BG = mci_str
+                    MCI_LAST_FG = LAST_FG
+                    MCI_LAST_BG = mci_str
+
+                #reset colors
+                mci_str = ""
+                mci_count = 0
+                mci_char = False
+
+            #global colors are set only after a new character has been added after the MCI code!            
+            if mci_count < 2 and element in ['0','1','2','3','4','5','6','7','8','9']:
+                mci_count = mci_count + 1
+                mci_str = mci_str + element
+            else:
+                mci_str = ""
+                mci_count = 0
+                mci_char = False
+
+        if element == "|":
+
+            d1 = s[count+1:count+2]
+            d2 = s[count+2:count+3]
+
+            #only process digits
+            if ( d1.isdigit() and d2.isdigit() ): # or count > position:
+                colorcode = d1 + d2
+                
+                if colorcode.isdigit():
+                    colorcode = int ( colorcode )
+
+                    if colorcode >= 0 and colorcode <= 23:
+                        #change to mci prompt code color
+                        MCI_LAST_BG = config.mci_default_bg
+                        MCI_LAST_FG = config.mci_default_fg
+
+            mci_char = True
+            mci_count = 0
+            mci_str = element
+
+
+        count += 1
+
+        if count > position:
+            return
+
+    return
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+# mci string truncate - calculates length by skipping over mci color codes
+#------------------------------------------------------------------------------
+def get_mci_str( s, position, truncate=True ):
+
+    #check if these strings work:
+    #|14aaaaabaaaaaacaaaaaaadaaaaaaaeaaaaaaafaaaaaaagaaaaaaagaaaaahaaaaiyz|1|13|1a|12a|11a
+    #|14aaaaabaaaaaacaaaaaaadaaaaaaaeaaaaaaafaaaaaaagaaaaaaagaaaaahaaiyz|10||13|1a|12a|11a
+    #|14aaaaabaaaaaacaaaaaaadaaaaaaaeaaaaaaafaaaaaaagaaaaaaagaaaaahaaiyz||10||13|1a|12a|11a
+
+    global MCI_LAST_FG, MCI_LAST_BG
+
+    count = 0
+    mci_char = False
+    mci_count = 0
+    mci_str = "" #keep track of mci colors
+
+    LAST_BG = config.mci_default_bg
+    LAST_FG = config.mci_default_fg
+
+    r = ""
+
+    for element in s:
+
+        if mci_char == True: 
+
+            #global colors are set only after a new character has been added after the MCI code!            
+            #if mci_count < 2 and element in ['0','1','2','3','4','5','6','7','8','9']:
+            if element in ['0','1','2','3','4','5','6','7','8','9']:
+                mci_count = mci_count + 1
+                mci_str = mci_str + element
+            else:                
+                mci_str = ""
+                mci_count = 0
+                mci_char = False
+            
+            if len(mci_str) == 3:
+
+                #edge case color not carried to new line
+                if count >= position:
+                    return r[:-2]
+
+                if int(mci_str[1:]) in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]:
+                    LAST_FG = mci_str                    
+                    MCI_LAST_BG = LAST_BG
+                    MCI_LAST_FG = mci_str
+                    count = count - 3
+
+                if int(mci_str[1:]) in [16,17,18,19,20,21,22,23]:
+                    LAST_BG = mci_str
+                    MCI_LAST_FG = LAST_FG
+                    MCI_LAST_BG = mci_str
+                    count = count - 3
+                
+                #reset colors
+                mci_str = ""
+                mci_count = 0
+                mci_char = False
+
+            
+            #fix two edge cases returned string too long
+            if count >= position and element == '|':
+                return r[:-1]    
+
+            if count >= position and element <> '|':
+                return r[:-2]    
+
+        if element == "|":            
+            mci_char = True
+            mci_count = 0
+            mci_str = element
+
+        #increase char count for truncating        
+        count += 1
+
+        r += element
+
+        #lookahead space check 
+        if truncate:
+            if element == " " and count > position - 20 and len(stripmci(s)) > position:
+                if stripmci( s )[count+1:position+1].count(" ") == 0:
+                    return r
+
+        if count >= position and mci_char == False:
+            return r
+
+    return r
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+# breaks text into chatbuffer portions
+#------------------------------------------------------------------------------
+def say( name, s, default_color ):
+
+    global ircbuffer, chatbuffer, drawusers, MCI_LAST_BG, MCI_LAST_FG
+
+    # first part of string always draw name
+    drawname = True
+
+    timestamp = ""
+    if config.add_timestamp:
+        timestamp = '|09'+time.strftime("%H|08:|09%M ", time.gmtime())
+
+    if name == "":
+        tmpname = timestamp + config.mci_default_bg
+    else:
+        tmpname = timestamp + config.mci_default_bg + config.mci_name_color + name.replace("_","|08_"+config.mci_name_color) + config.mci_name_postfix
+
+    # calc name length with postfix
+    name_len = len( stripmci( tmpname ) ) + len( stripmci (config.mci_name_postfix ) ) - 3
+
+    # check if configured bot name
+    for i, BOT in enumerate(config.mci_bot_names):
+        if name == BOT:
+            tmpname = config.mci_bot_prefix
+            name_len = len( stripmci( config.mci_bot_prefix ) ) - 1
+
+    #replace irc colors with mci colors      
+    text = irc_to_mci( s )
+
+    # calc available line len after nickname
+    available_len = config.max_line_len - name_len - len ( stripmci ( config.mci_name_postfix ) ) 
+
+    # set text buffer length # fixed -1 error!
+    text_len = len( text )
+
+    # reset temp colors 
+    MCI_LAST_FG = default_color #needed for regular say (user input)
+    MCI_LAST_BG = ""
+    
+    # repeat while text in buffer
+    while text_len > 0:
+
+        # If not using this buffer second iteration will have colors of second iteration -d0h-
+        LAST_FG = MCI_LAST_FG
+        LAST_BG = MCI_LAST_BG
+
+        #get portion of string, only count non-mci chars
+        tmp = get_mci_str( text , available_len )
+
+        # avoid blank lines for whatever reason
+        if len ( stripmci ( tmp ).strip( ) ) == 0:
+            return ""        
+
+        if drawname == True:            
+            #draw first line of string
+            r = tmpname + default_color + tmp 
+            drawname = False               
+        else:
+            #draw other than first lines add previous colors
+            #prefix spaces for name len
+            name_str = ""
+            count = 0
+
+            while count <= name_len:
+                count += 1
+                name_str = name_str + " "
+
+            r = name_str + LAST_FG + LAST_BG + tmp
+
+        # add default color to end of part line
+        r = r + config.mci_default_bg
+        
+        #add line to chat buffer
+        chatbuffer.append(r)
+
+        #remove substr from full text
+        text = text.replace(tmp,'').lstrip()
+        
+        #reduce text buffer length
+        text_len = len( text )
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+def mci_adjust_y(s,i=0):
+  for match in re.findall(r'\|\[Y([0-9]{2})', s):
+    pos = int( match )
+    pos += i
+    s = s.replace('|[Y'+match, '|[Y'+str(pos).zfill(2)) 
+
+  return s
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+def mci_adjust_x(s,i=0):
+  for match in re.findall(r'\|\[X([0-9]{2})', s):
+    pos = int( match )
+    pos += i
+    s = s.replace('|[X'+match, '|[X'+str(pos).zfill(2)) 
+
+  return s
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+def mci_extract_y(s):
+  for match in re.findall(r'\|\[Y([0-9]{2})', s):
+    pos = int( match )
+    return pos
+
+  return -1
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+def mci_extract_x(s):
+  for match in re.findall(r'\|\[X([0-9]{2})', s):
+    pos = int( match )
+    return pos
+
+  return -1
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+def find_between( s, first, last ):
+    try:
+        start = s.index( first ) + len( first )
+        end = s.index( last, start )
+        return s[start:end]
+    except ValueError:
+        return ""
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+def connect( channel="", password="", first=True ):
+
+    global s, HOST, PORT, NICK, CHANNEL, PASSWORD, drawhdr, user
+
+    if first:
+        s = socket.socket( )
+
+        try:
+            s.connect( ( HOST, PORT ) )
+
+        except Exception as e: 
+            writeln( "Exception: %s" % ( e ) )
+            s.close( )
+            #irc_down = True
+            return False
+
+        s.settimeout( 1 )
+        #s.send( "PASS xxx\n" ) # only if authentication is required.    
+
+        username = user['handle'].translate(None, ' ')
+
+        s.send( "USER %s %s %s :%s\r\n" % (username, '-', '-', username + '@' + cfg['bbsname']) ) 
+    
+    if len( channel ) == 0:
+        if "PAGER" in actions:
+            channel = config.pager_channel
+            password = config.pager_password
+        else:
+            channel = config.channel[config.server_id]
+            password = config.password[config.server_id]
+    
+    s.send( "NICK %s\n" % NICK ) 
+    if (len(password) == 0):
+        s.send( "JOIN " + channel + "\n" )
+    else:
+        s.send( "JOIN " + channel + " " + password + "\n" )
+
+    CHANNEL = channel
+    PASSWORD = password
+
+    setpinfo(8, config.mci_join_color )
+    setpinfo(9, config.mci_join_color )
+
+    drawhdr = True
+    return True
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+def send( text, force=False ):
+
+    global s, CHANNEL
+
+    if len( CHANNEL ) > 0 or force == True:
+        s.send( text )
+#------------------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------------------------------------
+def draw_prompt( onlylastchar=False, removechar=False, posonly=False ):
+
+    global MCI_LAST_BG, MCI_LAST_FG, writebufferpos, writebuffer
+
+    if not onlylastchar:
+        toggle_cursor(False)
+
+
+    MCI_LAST_FG = config.mci_default_fg
+    MCI_LAST_BG = config.mci_default_bg
+
+    if len(writebuffer) > config.mci_prompt_len:
+        onlylastchar = False
+        removechar = False
+        posonly = False
+
+    #add only one char
+    if onlylastchar and not removechar:
+        get_mci_colors( writebuffer, len(writebuffer) )
+        write( mci_adjust_x( config.mci_chat_prompt_xy, len( writebuffer ) + 3 ) )
+        write( MCI_LAST_FG + MCI_LAST_BG + writebuffer[-1:] ) #config.mci_chat_color +
+
+    #remove char
+    elif removechar and not onlylastchar:
+        write( mci_adjust_x( config.mci_chat_prompt_xy, len( writebuffer ) + 4 ) )
+        write( MCI_LAST_FG + MCI_LAST_BG + " " ) #config.mci_chat_color +
+
+    #full string
+    elif not posonly:
+        write( mci_adjust_y( config.mci_chat_prompt_xy, 0 ) + mci_adjust_x( config.mci_chat_prompt_xy, + 4 ) )
+        count = 0
+        frompos = 0
+
+        if writebufferpos < config.mci_prompt_len:
+            frompos = 0
+        else:
+            diff = len(writebuffer) - writebufferpos
+            offset = diff % config.mci_prompt_len
+            frompos = len(writebuffer) - config.mci_prompt_len - offset
+
+        for c in writebuffer:
+            count += 1
+            #how to write from start, or from writebufferpos, or until end of line       
+            if count > frompos and count <= (frompos + config.mci_prompt_len):                        
+                write( MCI_LAST_FG + MCI_LAST_BG + c )
+                get_mci_colors( writebuffer, count )
+
+
+    if not posonly:
+        write( config.mci_default_bg + config.mci_clearline + '\r' )
+
+    if not onlylastchar:
+        toggle_cursor(True)
+
+    if writebufferpos < config.mci_prompt_len:   
+        write( mci_adjust_x( config.mci_chat_prompt_xy, writebufferpos + 4 ) )
+    else:
+        write( mci_adjust_x( config.mci_chat_prompt_xy, config.mci_prompt_len + 4 ) )
+#-----------------------------------------------------------------------------------------------------
+
+
+###################################################################################################################
+# Listen thread
+###################################################################################################################
+
+def thread_listen(s):
+    try:
+        global error_halt, stop_threads, start_chat, chatbuffer, ircbuffer, redraw, drawhdr, NICK, USERS, redrawusers, DEFUSERS, pollusers, CHANNEL, PRVMSGUSER, DESTPRVUSER, DEBUG #, stop_page 
+
+        data = ''
+        buf = ''
+
+        DESTPRVUSER = None
+        PRVMSGUSER = None
+
+        sysop_left  = False
+        polledusers = 0
+
+        while not shutdown() and not stop_threads:
+            
+            try:
+
+                #this produces correct unicode, but converting the unicode proves difficult :/
+                #readbuffer = readbuffer + s.recv(1024).decode('utf-8')
+                
+                data = buf + s.recv(1024)
+
+                if not "\r\n" in data:  # skip recv if we already have another line buffered.
+                    data += s.recv(1024)
+
+                if not "\r\n" in data:  # wait for socket receive if no newline detected 
+                    continue
+                
+                i = data.rfind( "\r\n" )
+                data, buf = data[:i+2], data[i+2:]
+                lines = data.split( "\r\n" )
+                lines = filter( None, lines )
+                
+                for line in lines:
+                    line = utf_to_ascii( line )
+                    trailing = ""
+                    prefix = ""
+                    
+                    if line[0] == ":":
+                        line = line[1:].split(' ', 1)
+                        prefix = line[0]
+                        line = line[1]
+                    
+                    if " :" in line:
+                        line = line.split(" :", 1)
+                        trailing = line[1]
+                        line = line[0]
+
+                    args = line.split()
+
+                    command = args.pop(0)
+
+                    if trailing:
+                        args.append(trailing.rstrip())
+
+                    FROM = prefix.partition( "!" )[0]
+
+                    # debug irc data
+                    if DEBUG or (not DEBUG and command not in ["338","301","311","312","313","314","315","316","317","318","319","378","379","353","366"]):
+                        ircbuffer.append( command + " " + str(args) )
+
+                    # error
+                    if ( command == "ERROR" ): 
+                        ERROR = args.pop( ) 
+                        logerror( ERROR )
+
+                        chatbuffer.append( "|12ERROR" + "|08 " + ERROR )                           
+                        ircbuffer.append( "ERROR" + " " + ERROR )
+                        
+                        redraw = True
+                        error_halt = True
+                        sys.exit() # exit this thread
+
+                    # ping
+                    elif ( command == "PING" ):
+                        send( "PONG %s\r\n" % args.pop( 0 ), True )
+
+                    # wrong password
+                    elif ( command == "475" ):
+                        MSG = args.pop( )
+                        chatbuffer.append( config.mci_notice + MSG )
+                        CHANNEL = ""
+                    
+                    # no such channel
+                    elif ( command == "403" ):
+                        MSG = args.pop( )
+                        chatbuffer.append( config.mci_notice + MSG + ': ' + CHANNEL )
+                        CHANNEL = ""
+
+                    # not in channel
+                    elif ( command == "442" ):
+                        CHANNEL = ""
+
+                    # notices
+                    elif ( command in ["482","401","404"] ): 
+
+                        #404 cannot send to channel
+                        #482 kick priveleges to low
+                        #401 no such nick or channel
+                        MSG = args.pop( )
+                        chatbuffer.append( config.mci_notice + MSG )
+                        redraw = True
+
+                    # notices
+                    elif ( command == "NOTICE" ):
+
+                        TO = args.pop ( 0 )
+                        text = args.pop( ) 
+                            
+                        if TO.upper() == CHANNEL.upper():
+                            text = args.pop( ) 
+                            say( FROM, text, config.mci_notice )
+
+                        elif TO == NICK:
+                            say( config.mci_whisper_prefix + config.mci_name_color + FROM + config.mci_whisper_postfix, text, config.mci_default_fg )
+
+                            if DESTPRVUSER == None:
+                                PRVMSGUSER = FROM
+
+                        redraw = True       
+                    
+                    # messages
+                    elif ( command == "PRIVMSG"):
+                        
+                        # channel messages
+                        if args[0].upper() == CHANNEL.upper():
+
+                            # if action
+                            if args[1].find( "\x01ACTION" ) != -1:
+                                MSG = args.pop()
+                                chatbuffer.append( config.mci_action_color + FROM + " " + MSG.translate(None, b"\x01ACTION").translate(None, "\x01")[1:] ) 
+
+                            # if message
+                            else:
+
+                                if FROM.upper() == SYSOP.upper(): 
+                                    #start chat if response written
+                                    if start_chat == False:
+                                        start_chat = True
+
+                                say( FROM, args[1], config.mci_default_fg )
+
+                        # whispers
+                        elif args[0] == NICK:
+
+                            # if action
+                            if args[1].find( "\x01ACTION" ) != -1:
+                                MSG = args[1]
+                                chatbuffer.append( config.mci_whisper_prefix + config.mci_action_color + FROM + config.mci_whisper_postfix + " " + config.mci_action_color + MSG.translate(None, b"\x01ACTION").translate(None, "\x01")[1:] )
+
+                            # if message
+                            else:                                
+                                say( config.mci_whisper_prefix + config.mci_name_color + FROM + config.mci_whisper_postfix, args[1], config.mci_default_fg )
+
+                            if DESTPRVUSER == None:
+                                PRVMSGUSER = FROM
+
+                        redraw = True
+
+                    # end of whois list
+                    elif ( command == "318" ):
+
+                        polledusers = polledusers + 1
+                        if polledusers == len( USERS ):
+                            DEFUSERS = USERS
+                            pollusers = True #start count again
+                            redraw = True
+                            redrawusers = True
+
+                    # away
+                    elif ( command == "301" ):
+                        match = args.pop( 1 )
+
+                        if len( USERS ) > 0:
+                            for i, USER in enumerate(USERS):
+                                tmpname = USER[1].translate(None,'%@+')
+
+                                if tmpname == match:
+                                    USERS[i][0] = True
+                                    #redrawusers = True #dont redraw, only on ISON_RPL
+
+                                if tmpname.upper() == SYSOP.upper():                           
+                                    if "PAGER" in actions:
+                                        if sysop_left == False:
+                                            # avoid false positive
+                                            if len( DEFUSERS ) > 0:
+                                                chatbuffer.append( config.mci_default_bg + config.mci_action_color + SYSOP + " left the chat, feel free to exit :P" )
+                                                redraw = True
+                                                sysop_left = True
+                                        #stop_threads = True
+                                        #error_halt = True
+
+                    # away / back
+                    elif ( command == "305" ):
+
+                        for i, USER in enumerate( DEFUSERS ):
+                            if USER[1] == NICK:
+                                if USER[0] == True:
+
+                                    DEFUSERS[i][0] = False
+                                    redrawusers = True
+
+                        text = args.pop( ) 
+                        chatbuffer.append( config.mci_join_color + text )
+                        redraw = True       
+
+                    elif ( command == "306" ):
+
+                        for i, USER in enumerate( DEFUSERS ):
+                            if USER[1] == NICK:
+                                if USER[0] == False:
+
+                                    DEFUSERS[i][0] = True
+                                    redrawusers = True
+
+                        text = args.pop( ) 
+                        chatbuffer.append( config.mci_join_color + text )
+                        redraw = True       
+
+                    # RPL_ISON from NAMES
+                    elif ( command == "353" ):
+                        # is this always the case?
+                        if CHANNEL <> args[2]:
+                            CHANNEL = args[2]
+                            setpinfo( 8, CHANNEL )
+                            drawhdr = True
+                            redraw = True
+
+                        if pollusers == True:
+                            USERS = []
+                            NAMES = args.pop( )
+
+                            pollusers = False                         
+                            polledusers = 0
+                            
+                            for NAME in NAMES.split( ):
+                                tmpname = NAME.translate(None,'%@+')
+                                away = False
+
+                                # check if configured bot name
+                                for i, BOT in enumerate(config.mci_bot_names):
+                                    if tmpname == BOT:
+                                        away = True
+
+                                USERS.append( [away, NAME] )
+                                send("WHOIS" + " " + tmpname + "\n", True)
+
+                    # part
+                    elif ( command == "PART" ): 
+                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " left " + args.pop( 0 ) )
+                        redraw = True
+
+                    # join                   
+                    elif ( command == "JOIN" ):                           
+                        USERS.append( [False, FROM ])
+                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " joined " + CHANNEL )
+                        redraw = True
+
+                    #MODE
+                    #elif ( command == "MODE"):
+                    #already polling automatic
+                    #    s.send("NAMES" + " " + CHANNEL + "\n")
+                    #    pollcount = 1
+                        
+                    # kick             
+                    elif ( command == "KICK" ):
+                        WHO = args.pop( 1 ) 
+
+                        if WHO.find( NICK ) > -1:
+                            chatbuffer.append( config.mci_error + "Kicked by " + args.pop( 1 ) )
+                            error_halt = True
+                        else:
+                            if FROM == NICK:
+                                chatbuffer.append( config.mci_notice + "You kicked " + WHO )
+                            else:
+                                chatbuffer.append( config.mci_notice + FROM + " kicked " + WHO )
+                        
+                        redraw = True                        
+                    
+                    # nick name error
+                    elif ( command == "432"):
+                        chatbuffer.append( config.mci_notice + args.pop( ) )
+                        chatbuffer.append( config.mci_join_color + "Reconnecting with alternate nickname" )
+                        NICK = "_" + NICK
+                        connect( "", "", False )
+
+                    # nick in use
+                    elif ( command == "433" ):
+                        chatbuffer.append( config.mci_notice + args.pop( ) )
+                        chatbuffer.append( config.mci_join_color + "Reconnecting with alternate nickname" )
+                        NICK = NICK + "_" 
+                        connect( "", "", False )
+
+                    # quit
+                    elif ( command == "QUIT" or line[ 1 ] == "PART"):                          
+                        removeitem = -1
+                        if len( USERS ) > 0:
+                            for i, USER in enumerate(USERS):
+                                tmpname = USER[1].translate(None,'%@+')
+                                if FROM == tmpname:
+                                    removeitem = i
+
+                        if removeitem > -1:
+                            # remove away status
+                            USERS.remove(USERS[removeitem])
+
+                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " " + args.pop( ) )
+                        redraw = True
+                        redrawusers = True
+
+                        if FROM.upper() == SYSOP.upper():    
+                            #only in pager mode                                      
+                            if "PAGER" in actions:
+                                if sysop_left == False:
+                                    chatbuffer.append( config.mci_default_bg + config.mci_action_color + SYSOP + " left the chat, feel free to exit :P" )
+                                    redraw = True
+                                    sysop_left = True
+                    
+                    # MODT - server
+                    elif ( command == "372" ): 
+                        MODT = args.pop( )
+                        say('', config.mci_action_color + MODT[2:], config.mci_default_fg)
+                        redraw = True
+                    
+                    # topic
+                    elif ( command == "332" ):                                                        
+                        setpinfo( 8, CHANNEL )
+                        setpinfo( 9, args.pop( ) ) #modt
+                        drawhdr = True
+                        
+                        #start polling users for this channel
+                        pollusers = True 
+                    
+                    # new topic
+                    elif ( command == "TOPIC" ): 
+
+                        TOPIC = args.pop( )
+                        setpinfo( 8, CHANNEL )
+                        setpinfo( 9, TOPIC ) #modt
+                        drawhdr = True
+
+                        say( "", FROM + " changed topic to: " + TOPIC, config.mci_notice )                        
+                        redraw = True
+
+            # socket.timeout:
+            except socket.timeout:                   
+
+                # shutdown 
+                if stop_threads or shutdown():                        
+                    sys.exit( )
+    
+    # catch all errors
+    except Exception as e:   
+        msg = "Listen thread exception: %s" % ( str( traceback.format_exc() ) )
+        logerror(msg)
+        write(msg+"|PN")
+
+        stop_threads = True
+        sys.exit( 1 )
+
+    # close sockets on exit
+    s.shutdown( socket.SHUT_RDWR )
+    s.close( )
+
+
+###################################################################################################################
+# Paging thread
+###################################################################################################################
+
+def thread_page(s,):
+
+    global stop_threads, start_chat, drawusers #, stop_page
+
+    user_interrupt  = False
+    pagecount       = 300
+    count           = 0
+    oldpos          = -1
+    #drawprompt      = True
+    pushover_count  = 0
+    
+    #------------------------------------------------------------------------------------------------------
+    # page loop
+    #------------------------------------------------------------------------------------------------------
+
+    while count < pagecount + 1 and start_chat == False and stop_threads == False:
+
+        menucmd('NA','Paging Sysop')
+
+        pos = float(count) / pagecount * 46
+        pos = int(pos)
+        if pos <> oldpos:
+            oldpos = pos
+            updatebar(config.pager_bar_startpos, count, pagecount, config.pager_bar_length, False)
+
+        time.sleep( 0.1 )
+
+        # send pushover message if not stop paging
+        if (pushover_count == 0 or count == 20 or count == 100): # and stop_page == False:
+            
+            if config.enable_pushover == True:
+
+                try:                    
+                    push.send_message( NICK + " paging IRC", sound = "pushover", url = "irc://" + HOST + "/" + CHANNEL + "/" )
+                    
+                except SomeError:
+                    writeln( "pushover failed" )
+
+            pushover_count = pushover_count + 1
+
+        # send irc message
+        if (count == 20 or count == 100): # and stop_page == False:
+
+            #s.send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + SYSOP + "\n")
+            send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + SYSOP + "\n")
+
+        # check key input for abort
+        if keypressed( ):
+            key, extended = getkey( )
+
+            if key == KEY_ESCAPE:                    
+                user_interrupt = True
+                stop_threads = True
+                break
+
+        count = count + 1
+
+    # abort if start_chat has not been set by listen thread
+
+    if start_chat == False:
+        if user_interrupt == True:
+            send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " has stopped the pager" + "\x01\n")
+        else:
+            send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " let the pager time-out" + "\x01\n")            
+
+        stop_threads = True
+
+
+###################################################################################################################
+# chat thread
+###################################################################################################################
+
+def thread_say( s, ):
+
+    global stop_threads, chatbuffer, redraw, drawhdr, USERS, drawusers, draw_irc, redrawusers, DEFUSERS, pollusers, CHANNEL, PASSWORD, PRVMSGUSER, DESTPRVUSER, writebufferpos, writebuffer, ircbuffer
+
+    writebuffer = ''
+
+    TYPEBUFFER = []
+    typebufferpos = 0
+    chatbufferpos = 0
+    writebufferpos = 0
+
+    tabcomplete = False
+    tabindex = -1
+
+    redrawusers = False
+    draw_irc = False
+    pollcount = 0
+
+    if "PAGER" in actions:
+        menucmd('NA','Chatting with Sysop')
+    else:
+        menucmd('NA','chatting in iCHAT')
+    
+    try:
+        while stop_threads == False and not shutdown():
+            if drawhdr == True:
+                write( config.mci_channel_name_xy )
+                write( config.mci_channel_color + "|&8" + config.mci_channel_clearline )
+
+                write( config.mci_channel_topic_xy )
+                write( config.mci_channel_color + "|&9" + config.mci_topic_clearline )
+
+                draw_prompt( False, False, True )
+                drawhdr = False
+
+            if not keypressed( ):
+                time.sleep(0.05) #avoid high cpu
+                pollcount = pollcount + 1
+
+                if pollcount % 4 == 0: # always check for response
+                    if len(writebuffer) == 0:
+                        DESTPRVUSER = None
+                    elif writebuffer.upper().find('/R') == 0:
+                        DESTPRVUSER = PRVMSGUSER
+
+                if pollcount > config.poll_timeout:
+                    pollusers = True
+
+                if pollusers == True:
+                    if pollcount == 1:
+                        send( "NAMES " + CHANNEL + "\n", True ) # send IRC ISON request, to make sure away status is removed
+                    if "PAGER" in actions:
+                        if pollcount > config.sysop_polltime:
+                            pollcount = 0
+                    else:
+                        if pollcount > config.user_polltime:
+                            pollcount = 0
+            else:
+                key, extended = getkey( )
+                if key == KEY_ENTER:
+                    typebufferpos = 0
+                    writebufferpos = 0
+
+                    # only send if data to send
+                    if len( writebuffer ) > 0:
+                        TYPEBUFFER.append( writebuffer )
+                        command = writebuffer.split()[0].upper()
+
+                        if command == '/ME':
+                            send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " " + concat(writebuffer.split(),1) + "\x01\n") ##\x01 or \001
+                            chatbuffer.append( config.mci_action_color + NICK + " " + concat(writebuffer.split(),1) )
+
+                        elif command in ['/EXIT','/QUIT','/Q']:
+                            stop_threads = True
+
+                        elif command in ['/CHANNEL','/J','/JOIN']:
+                            if not "PAGER" in actions: #dont allow switch channel during pager chat
+                                lines = writebuffer.split()
+                                if len(lines)>1:
+                                    send("PART " + CHANNEL + "\n")
+                            
+                                    channel = lines[1]
+                                    if channel[0:1] <> '#':
+                                        channel = '#' + channel
+
+                                    if len(lines)>2:
+                                        password = lines[2]
+                                    else:
+                                        password = ""
+
+                                    connect( channel, password, False )
+                                    redraw = True
+
+                        elif command in ['/HELP','/H']:
+                            drawhelp()
+                            write('|PN')
+                            drawchat()
+                            drawhdr = True
+                            redraw = True
+                            redrawusers = True
+
+                        elif command == '/AWAY':
+                            for i, USER in enumerate( DEFUSERS ):
+                                if USER[1] == NICK:
+                                    if USER[0] == False:
+
+                                        if len( writebuffer ) == 5:
+                                            writebuffer = "/AWAY Away!"
+
+                                        lines = writebuffer.split()
+                                        send("AWAY " + " :" + concat(lines,1) + "\n")
+
+                        elif command == '/BACK':
+                            for i, USER in enumerate( DEFUSERS ):
+                                if USER[1] == NICK:
+                                    if USER[0] == True:
+
+                                        send("AWAY " + " :\n")
+
+                        #elif writebuffer.upper().find('/WHO') == 0:
+                        #    write("|NW")
+                
+                        elif command == '/KICK':
+                            lines = writebuffer.split()
+                            if len(lines) == 2:
+                                send("KICK " + CHANNEL + " :" + lines[1] + "\n")
+                            #elif len(lines) > 2: # how to add reason?
+                            #    s.send("KICK " + CHANNEL + " :" + lines[1] + " " + concat(lines,2) + "\n")
+
+                        elif command in ['/R','/REPLY']:
+                            if DESTPRVUSER != None:
+                                lines = writebuffer.split()
+                                if len(lines) > 1:
+                                    send( "PRIVMSG " + DESTPRVUSER + " :" + concat(lines,1) + "\n", True) 
+                                    chatbuffer.append( config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + DESTPRVUSER.replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix + config.mci_name_postfix + config.mci_default_fg + concat(lines,1) + "|09" )                                    
+                            else:
+                                chatbuffer.append( config.mci_notice + "No private message received yet" )
+
+                        elif command in ['/MSG','/TELL','/T']:
+                            lines = writebuffer.split()
+                            if len(lines) > 2:
+                                send( "PRIVMSG " + lines[1] + " :" + concat(lines,2) + "\n", True) 
+                                if len( USERS ) > 0: #get name from userlist
+                                    for i, USER in enumerate(USERS):
+                                        if USER[1].translate(None,'%@+').upper() == lines[1].upper():
+                                            lines[1] = USER[1].translate(None,'%@+') #if found use it
+                                say(config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + lines[1].replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix, concat(lines,2), config.mci_default_fg )
+
+                        elif command in ['/CLR','/CLS','/CLEAR']:
+                            chatbuffer = []
+                            redraw = True
+
+                        elif command == '/TOPIC':
+                            lines = writebuffer.split()                               
+                            if len(lines) > 1:
+                                send( "TOPIC " + CHANNEL + " :" + concat(lines,1) + "\n")
+
+                        elif command[0] <> '/':                                
+                            send( "PRIVMSG " + CHANNEL + " :" + mci_to_irc( writebuffer ) + "\n" )
+                            say( config.mci_name_color + NICK.replace("_","|08_"+config.mci_channel_color), writebuffer, config.mci_default_fg )
+
+                        writebuffer = ""                            
+                        redraw = True
+                        draw_prompt( False )
+
+                elif key == KEY_UP and extended == True:
+                    tabcomplete = False
+                    if len( TYPEBUFFER ) > typebufferpos:
+                        typebufferpos += 1
+                        writebuffer = TYPEBUFFER[ len( TYPEBUFFER ) - typebufferpos]
+                        writebufferpos = len( writebuffer )
+                        draw_prompt( False ) 
+
+                elif key == KEY_DOWN and extended == True:
+                    tabcomplete = False
+                    typebufferpos -= 1
+
+                    if typebufferpos > 0:
+                        writebuffer = TYPEBUFFER[ len( TYPEBUFFER ) - typebufferpos]
+                        writebufferpos = len( writebuffer )
+                    else:
+                        writebuffer = ""
+                        typebufferpos = 0
+                        writebufferpos = 0
+
+                    draw_prompt( False ) 
+
+                elif key == KEY_LEFT and extended == True:
+                    writebufferpos -= 1
+                    if writebufferpos < 0:
+                        writebufferpos = 0
+                    else:
+                        draw_prompt( False, False, True )
+
+                elif key == KEY_RIGHT and extended == True:
+                    writebufferpos += 1
+                    if writebufferpos > len(writebuffer):
+                        writebufferpos = len(writebuffer)
+                    else:
+                        draw_prompt( False, False, True )
+
+                elif key == KEY_PGUP and extended == True:                    
+                    if (len( chatbuffer ) - config.max_chat_lines) > chatbufferpos:
+                        chatbufferpos = chatbufferpos + 1
+                        redraw = True
+
+                elif key == KEY_PGDN and extended == True:
+                    if chatbufferpos > 0:
+                        chatbufferpos = chatbufferpos - 1
+                        redraw = True
+
+                elif key == KEY_HOME and extended == True:
+                    writebufferpos = 0
+                    draw_prompt( False, False, True )
+
+                    #old home
+                    #if chatbufferpos < len( chatbuffer ) - config.max_chat_lines:
+                    #    chatbufferpos = len( chatbuffer ) - config.max_chat_lines
+                    #    if chatbufferpos < 0:
+                    #        chatbufferpos = 0                        
+                    #    redraw = True
+
+
+                elif key == KEY_END and extended == True:
+                    writebufferpos = len( writebuffer )
+                    draw_prompt( False, False, True )
+
+                    # old end
+                    #if chatbufferpos > 0:
+                    #    chatbufferpos = 0
+                    #    redraw = True                            
+
+                #toggle names
+                elif key == KEY_CTRLN and extended == False:
+                    if drawusers == False:
+                        drawusers = True
+                    else:
+                        drawusers = False
+
+                    redrawusers = True
+                    redraw = True
+                    
+                #toggle names
+                elif key == KEY_CTRLZ and extended == False:
+                    drawhelp()
+                    write('|PN')
+                    drawchat()
+                    drawhdr = True
+                    redraw = True
+                    redrawusers = True
+                    
+                #draw or hide irc data
+                elif key == KEY_CTRLS and extended == False:
+                    if draw_irc == False:
+                        draw_irc = True
+                    else:
+                        draw_irc = False
+
+                    for y in range(1,config.max_chat_lines): #clear screen
+                        gotoxy(mci_extract_x(config.mci_chat_xy),mci_extract_y(config.mci_chat_xy)+y)
+                        if drawusers == False or y > len(USERS)+1:
+                            write( config.mci_clearline )
+                        else:
+                            write( "|$X63 " )
+
+                    redraw = True
+
+                # stop threads on escape
+                elif key == KEY_ESCAPE and extended == False:
+                    if writebuffer[writebufferpos-2:writebufferpos] <> '@[': #avoid exit on insert key (netrunner beta 20)
+                        stop_threads = True
+
+                # autocomplete names
+                elif key == KEY_TAB and extended == False:
+                    words = writebuffer.split()
+
+                    if words:
+                        word = words.pop()
+                        if tabcomplete == True:
+                            word = tabword
+                            if tabindex >= len( USERS ) - 1:
+                                tabindex = -1
+
+                        if len( USERS ) > 0:
+                            for i, USER in enumerate(USERS):
+                                if USER[1].translate(None,'%@+').upper().find(word.upper()) == 0:
+                                    if (tabcomplete == True and tabindex < i) or tabcomplete == False:
+
+                                        tabcomplete = True
+                                        tabindex = i
+                                        tabword = word
+
+                                        if len(words) == 0:
+                                            writebuffer = ' '.join(words) + USER[1].translate(None,'%@+')
+                                        else:
+                                            writebuffer = ' '.join(words) + ' ' + USER[1].translate(None,'%@+')
+                
+                                        writebufferpos = len (writebuffer)
+                                        draw_prompt( False )
+                                        break
+
+                # backspace    
+                elif key == KEY_BACKSPACE and extended == False:
+                    if writebufferpos > 0:
+                        tabcomplete = False
+                        writebuffer = writebuffer[:writebufferpos-1] + writebuffer[writebufferpos:]
+                        writebufferpos -= 1
+
+                    if writebufferpos == len(writebuffer):
+                        draw_prompt( False, True )
+                    else:
+                        draw_prompt( False )                        
+
+                # delete
+                elif key == KEY_DEL and extended == True:
+                    if writebufferpos < len(writebuffer):
+                        tabcomplete = False
+                        writebuffer = writebuffer[:writebufferpos] + writebuffer[writebufferpos+1:]
+                        draw_prompt( False )                        
+                
+                # save key to buffer
+                elif ord(key) in range(32,128) and extended == False:
+                    if len(writebuffer) < 128: #do not allow large sentences
+                        tabcomplete = False
+                        redraw = False
+
+                        #auto capitol first character
+                        if len(writebuffer) == 0:
+                            if config.uppercase_first_key == True:
+                                key = key.upper()
+
+                        if writebufferpos > len( writebuffer ) - 1:
+                            writebuffer = writebuffer + key
+                        else:
+                            writebuffer = writebuffer[:writebufferpos] + key + writebuffer[writebufferpos:]
+
+                        writebufferpos += 1
+
+                        #try to draw only new char, except when | color code is used, or insert key
+                        if writebufferpos < len( writebuffer ) or writebuffer.rfind('|') > len(writebuffer) - 4:
+                            draw_prompt( False )                           
+                        else:
+                            draw_prompt( True )                            
+                                                            
+            if redraw == True:
+                toggle_cursor(False)
+                if draw_irc == True: # draw irc data
+                    write( config.mci_chat_xy + config.mci_join_color )
+                    startpos = 0
+                    count = 0
+
+                    if len(ircbuffer) > config.max_chat_lines:
+                        startpos = len(ircbuffer) - config.max_chat_lines
+
+                    while count < config.max_chat_lines and count < len(ircbuffer):
+                        if drawusers == False or count > len(USERS): 
+                            writeln( config.mci_chat_line_x + ircbuffer[startpos + count][:77] + config.mci_clearline )
+                        else:
+                            writeln( config.mci_chat_line_x + ircbuffer[startpos + count][:62] + "|$X63 " )
+
+                        count = count + 1
+
+                else: # draw chat data
+                    write( config.mci_chat_xy )
+                    startpos = 0
+                    count = 0
+
+                    if len(chatbuffer) > config.max_chat_lines:
+                        startpos = len(chatbuffer) - config.max_chat_lines - chatbufferpos
+
+                    while count < config.max_chat_lines:
+
+                        drawline = ""
+                        if count < len( chatbuffer ):
+                            drawline = chatbuffer[ startpos + count ]
+
+                        if drawusers == False or count > len(DEFUSERS):
+                            write( config.mci_chat_line_x )
+                            print_line( drawline )
+                            writeln( config.mci_clearline )
+                        else:
+                            write( config.mci_chat_line_x )
+                            print_line( get_mci_str( drawline, 62, False ) )
+                            writeln( config.mci_default_bg + "|$X63 " )
+
+                        count = count + 1
+                        
+                #draw user tab
+                if redrawusers == True and drawusers == True and len( DEFUSERS ) > 0:
+                    online = 0
+                    for i, USER in enumerate( DEFUSERS ):
+                        if i < config.max_chat_lines:
+                            prefix = config.mci_list_name_middle_char
+                            if i == 0:
+                                prefix = config.mci_list_name_top_char
+
+                            write( mci_adjust_x( config.mci_list_name_xy ) + mci_adjust_y( config.mci_list_name_xy, i ) )
+
+                            if USER[0]: #away
+                                color = config.mci_list_name_away_color
+                            else:
+                                color = config.mci_list_name_color
+                                online += 1
+
+                            write( "|01" + prefix + color + " " + USER[1].replace('_','|08_'+color) + config.mci_clearline )
+        
+                    #end of user list
+                    write( mci_adjust_x( config.mci_list_name_xy ) + mci_adjust_y( config.mci_list_name_xy, len( DEFUSERS ) ) )
+                    write( config.mci_list_name_bottom + config.mci_clearline)
+                    redrawusers = False
+
+                    #draw total online users (not away)
+                    write( "|[X65|[Y23" ) 
+                    postfix = " online"
+                    write("|01[ |09" + str( online ) + postfix + "|01 ]")
+
+                toggle_cursor ( True )
+                draw_prompt( False, False, True )
+                redraw = False
+
+            if error_halt == True:
+                stop_threads = True
+
+    except Exception as e:                    
+        msg = "Keyboard thread exception: %s" % ( str( traceback.format_exc() ) )
+        logerror(msg)
+        write(msg+"|PN")
+
+        stop_threads = True
+        sys.exit(1)
+
+
+
+###################################################################################################################
+# Main
+###################################################################################################################
+
+#------------------------------------------------------------------------------------------------------
+# init actions
+#------------------------------------------------------------------------------------------------------
+
+i = 1
+while i <= param_count():
+    arg = param_str(i)  
+
+    if arg == "/PAGER":
+        actions.append('PAGER')
+    elif arg == "/SERVER":
+        config.server_id = int(param_str(i+1)) #take next parameter
+        i += 1
+
+    i += 1
+
+#------------------------------------------------------------------------------------------------------
+# init server variables
+#------------------------------------------------------------------------------------------------------
+
+if "PAGER" in actions:
+    #set private channel settings
+    if config.pager_host == "":
+        msg = "Please define the private sysop pager channel in the configuration file"
+        logerror( msg )
+        write( msg + "|PN" )
+        
+    HOST = config.pager_host
+    PORT = config.pager_port
+else:
+    #set public/interbbs channel settings 
+    HOST = config.host[config.server_id] 
+    PORT = config.port[config.server_id] 
+
+#------------------------------------------------------------------------------------------------------
+# init pushover 
+#------------------------------------------------------------------------------------------------------
+
+if config.enable_pushover:
+    push = pushover.PushoverClient( SCRIPTDIR + ".pushover")
+
+#------------------------------------------------------------------------------------------------------
+# adjust nickname
+#------------------------------------------------------------------------------------------------------
+
+cfg  = getcfg()   
+SYSOP = cfg['sysopname']
+
+user = getuser(0) 
+NICK = user['handle'].translate(None, ' ')[:config.max_nick_len] #no spaces and max 9 chars
+
+if NICK.upper() == SYSOP.upper():
+    NICK = NICK[:config.max_nick_len-1] + "_" # change sysop name
+
+if NICK[:1].isdigit():
+    NICK = "_" + NICK[:config.max_nick_len-1] # prevent number nick names
+
+#------------------------------------------------------------------------------------------------------
+# init connection
+#------------------------------------------------------------------------------------------------------
+
+if connect("","",True) == True:
+
+    # init paging screen
+    if "PAGER" in actions:
+        drawpager()
+        write( config.pager_time_startpos + time.strftime("%H:%M", time.gmtime()))
+        updatebar( config.pager_bar_startpos, 0, 10, config.pager_bar_length, False)
+        writeln( config.pager_connected )                    
+
+    # init listen thread
+    x1 = threading.Thread( target = thread_listen, args = ( s, ) )
+    x1.start( )
+    start_chat = True 
+
+    # init paging thread
+    if "PAGER" in actions:
+        start_chat = False
+        x2 = threading.Thread( target = thread_page, args = ( s, ) )
+        x2.start( )
+        x2.join( )
+
+    # init chat thread
+    if start_chat:
+        drawchat()
+        x3 = threading.Thread( target = thread_say, args = ( s, ) )
+        x3.start( )
+        x3.join( )
+
+
+    if error_halt == True:
+        write(config.forced_exit_notice)
+
+    # join listen thread to close it 
+    x1.join( )
+
