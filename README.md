@@ -15,3 +15,6 @@ MODT
 
 PrivMSG
 ![afbeelding](https://user-images.githubusercontent.com/472432/149823059-fcb4e8d6-23d3-435c-b324-ac6df240fd4a.png)
+
+Help
+![afbeelding](https://user-images.githubusercontent.com/472432/149824285-dbbb3018-fc1f-496c-9b8f-77865cb06280.png)
