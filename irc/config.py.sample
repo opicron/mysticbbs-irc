@@ -1,0 +1,215 @@
+
+###################################################################################################################
+# iChat Configuration
+###################################################################################################################
+
+
+###################################################################################################################
+# Server settings
+###################################################################################################################
+
+
+#------------------------------------------------------------------------------
+# default server - this id will be used if no server id is used on command line
+server_id = 1
+
+# initialize server variables - increase max if required
+max_servers = 10
+
+host = [0 for i in range(max_servers)]
+host = [0 for i in range(max_servers)]
+port = [0 for i in range(max_servers)]
+channel = [0 for i in range(max_servers)]
+password = [0 for i in range(max_servers)]
+
+
+# server #0 - make sure to use the number in the brackets [x]
+host     [0] = "irc.opicron.eu"
+port     [0] = 6667
+channel  [0] = "#General"
+password [0] = "iChatGen"
+
+# server #1 - make sure to use the number in the brackets [x]
+host     [1] = "irc.opicron.eu"
+port     [1] = 6667
+channel  [1] = "#Trivia"
+password [1] = "iChatTriv"
+
+
+# To use paging functionality you need the python [request] module (for pushover API)
+# by default this is disabled because not all python installations have this module enabled
+enable_pushover = False
+
+# (OPTIONAL) pager channel settings *KEEP THESE VERY PRIVATE* 
+# to request private channel contact me here:
+#    TheForze BBS:
+#	    bbs.opicron.eu:23
+#	    bbs.opicron.eu:22
+#    Netmail:
+#   	fsxnet 21:3/126
+#	    araknet 10:104/4
+pager_host     = ""
+pager_port     = 6667
+pager_channel  = ""
+pager_password = ""
+# to request an private channel on my irc daemon contact me on bbs.opicron.eu or send me a private netmail on 
+
+
+###################################################################################################################
+# Ansi settings
+###################################################################################################################
+
+#------------------------------------------------------------------------------
+# clear screen mci code
+mci_clearscr = '|07|16|CL'
+
+# pager ansi filename (no path! needs to be located in default irc path)
+filename_pager = 'pager.ans'
+
+# chat screen ansiname (no path! needs to be located in default irc path)
+filename_chatscreen = 'chat.ans'
+
+
+###################################################################################################################
+# Chat settings
+###################################################################################################################
+
+# strip all colors and styles from text? defailt False
+strip_irc_codes = False
+
+# default notice color
+mci_notice  = '|14'
+
+# default error color
+mci_error  = '|12'
+
+# default chat color
+mci_default_fg = '|07'
+
+# default chat color
+mci_default_bg = '|16'
+
+# clear to end of line 
+mci_clearline = '|[K'
+
+mci_channel_clearline = '|$X48 '
+mci_topic_clearline = '|$X78 '
+
+# start chat pos
+mci_chat_xy = '|[X01|[Y05'
+
+# start chat xpos plus spacing
+mci_chat_line_x = '|[X01 '
+
+# channel name color
+mci_channel_color = '|15'
+
+# channel name pos
+mci_channel_name_xy = '|[X13|[Y02'
+
+# channel topic color
+mci_topic_color = '|15'
+
+# channel topic pos
+mci_channel_topic_xy = '|[X13|[Y03'
+
+# chat prompt pos
+mci_chat_prompt_xy = '|[Y24|[X01'
+
+# chat prompt
+mci_chat_prompt = '|09 >> |15'
+
+# array of bot names ['name','name']
+mci_bot_names = ['FB']
+
+mci_bot_prefix = '|09* '
+
+# chat bar text color
+mci_chat_color = '|15'
+
+# number of lines to show
+max_chat_lines = 18
+
+# max line length
+max_line_len = 79
+
+# whisper postfix
+mci_whisper_postfix = ''
+
+# whisper prefix
+mci_whisper_prefix = '|08[|12*|08] '
+
+#nickname color
+mci_name_color = '|15'
+
+#nickname postfix
+mci_name_postfix = '|09: '
+
+#action color
+mci_action_color = '|09'
+
+#join color
+mci_join_color = '|08'
+
+
+
+###################################################################################################################
+# Pager settings
+###################################################################################################################
+
+# blank pager bar color and character 
+pager_bar_blank     = '|16|08'+chr(176)
+
+# fill pager bar color and character 
+pager_bar_fill      = '|16|11'+chr(178)
+
+# pager bar starting position xy
+pager_bar_startpos  = '|[X23|[Y13'
+
+# pager bar total length
+pager_bar_length    = 46
+
+# pager time starting position xy and color
+pager_time_startpos = '|[X64|[Y11|09'
+
+# pager connected to irc text
+pager_connected     = '|[X10|[Y15|15status |08[|10connected|08]'
+
+
+###################################################################################################################
+# User list options
+###################################################################################################################
+
+# Away color on name list
+mci_list_name_away_color = "|08"
+
+# User color on name list
+mci_list_name_color = "|09"
+
+# How much time between name and away status poll in regular channels 
+user_polltime = 200
+
+# Time between name and away status poll in sysop chat (to inform user when sysop leaves on away)
+sysop_polltime = 100
+
+# Poll timeout (resets poll)
+poll_timeout = 250
+
+# name list xy
+mci_list_name_xy = "|[X64|[Y05"
+
+mci_list_name_top_char = ":"
+mci_list_name_middle_char = "|"
+mci_list_name_bottom = "|01`--------------'"
+
+
+###################################################################################################################
+# Other
+###################################################################################################################
+
+# Notice on forced exit
+forced_exit_notice = "|[Y24|[X02|14press any key to exit..|[K|PN"
+
+# Uppercase first key?
+uppercase_first_key = False
+
