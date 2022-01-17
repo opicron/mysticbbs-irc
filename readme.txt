@@ -3,6 +3,8 @@
 ## iCHAT v2.12 - open source MysticBBS IRC client 2021-2022
 ======================================================================================================
 
+https://github.com/opicron/mysticbbs-irc
+
 For questions, private channels or operator status contact me:
 
     TheForze BBS:
