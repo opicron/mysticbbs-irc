@@ -96,10 +96,10 @@ v1.0
 ======================================================================================================
 
 important: 
-	edit your config.py.sample file and rename it to config.py in the /scripts/irc/ directory.
+	edit config.py.sample file and rename it to config.py in the /scripts/irc/ directory.
 
 (OPTIONAL FOR PAGING FUNCTIONALITY) 
-	edit .pushover.sample file and rename it to .pushover in /scripts/irc/
+	edit pushover.config.sample file and rename it to pushover.config in /scripts/irc/
 
 #Copy files
 ------------------------------------------------------------------------------------------------------
@@ -109,7 +109,7 @@ Copy contents of /irc/ to the correct mystic theme /script/irc/ folder
 
 Rename config.py.sample to config.py in /scripts/irc/
 
-(optional)Rename .pushover.sample to .pushover in /scripts/irc/
+(optional)Rename pushover.config.sample to pushover.config in /scripts/irc/
 
 (optional)if you want to used the pager module enable "enable_pushover = True" in config**
 
