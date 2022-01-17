@@ -1,0 +1,23 @@
+[0m
+
+        [1;30m.--[ [0mkeys[1;30m ]----------------------------------------------------.[0m
+        [1;30m|[0m                                                              [1;30m|[0m
+        [1;30m|[0m   [1;30m[ [36m[30m/[36m [30m] [37mnext/previous text    [30m[ [36mPAGE [30m/[36m [30m] [37mscroll chat     [30m|[0m
+        [1;30m|[0m   [1;30m[ [36m[30m/[36m [30m] [37mscroll through text[30m   [ [36mHOME[30m/[36mEND [30m] [37mstart/end text  [30m|[0m
+   [36m.    [1;30m|                                                              |    [0;36m.[37m
+        [1;30m|[0m   [1;30m[ [36mCTRL[30m-[36mN[30m ] [37mtoggle names       [30m[ [36mESC [30m] [37mexit[0m [1mchat[0m            [1;30m|[0m
+   [1;36m.    [30m|   [ [36mCTRL[30m-[36mS[30m ] [37mtoggle debug       [30m[ [36mENTER [30m] [37msend command[0m       [1;30m|    [36m.[0m
+   [36m:    [1;30m|[0m                                                              [1;30m|[0m    [36m:[37m
+   [36m:    [1;30m`--------------------------------------------------------------'[37m    [0;36m:[37m
+   [1;36m|[0m                                                                        [1;36m|[0m
+   [1;36m:      [0m/[1mREPLY[0m  /[1mR[0m   privmsg reply         /[1mCLS     [0mclear screen[1;36m          :[0m
+   [36m|[1;37m      [0m/[1mJOIN[0m   /[1mJ[0m   join [1;30m[[0mchannel[1;30m]        [0m/[1mAWAY[0m    set AFK[1;30m [[0mreason[1;30m][0m      [1;36m|[0m
+   [1;36m|[37m      [0m/[1mQUIT   [0m/[1mQ[0m   exit chat[1;30m             [0m/[1mBACK[0m    return from AFK[1;36m       /[0m
+   [1;36m|[0m      /[1mTELL   [0m/[1mT[0m   privmsg [1;30m[[0muser[1;30m][0m        /[1mME      [0mperform [1;30m[[0maction[1;30m]      [36m/[0m
+   [1;36m|[0m      /[1mHELP[0m   /[1mH[0m   this screen[1;30m           [0m/[1mTOPIC   [0mset new [1;30m[[0mtopic[1;30m][0m       [1;36m|[0m
+   [1;36m:[0m                                         /[1mKICK    [0mkick [1;30m[[0muser[1;30m][0m           [1;36m|[0m
+   [1;36m|[0m                                                                        [1;36m|[0m
+   [1;36m|[0m      |[1m16[30m-[0m|[1m23[0m set background color       [1;30m[[31m*[30m]    [0mprivate message         [1;36m|[0m
+   [1;36m|[0m      |[1m01[30m-[0m|[1m15[0m set foreground color       [1;30m[[34m*[30m]    [0mbot message             [1;36m:[0m
+   [1;36m|                                                                        |[0m
+   [1;36m`----------------[ [37mirc commands[0m [1;36m]----------------------------------------'[0m
