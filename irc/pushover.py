@@ -40,7 +40,7 @@ class PushoverClient(object):
     def __init__(self, configfile=""):
         self.configfile = configfile
         self.parser = SafeConfigParser()
-        self.files = self.parser.read([self.configfile, os.path.expanduser("~/.pushover")])
+        self.files = self.parser.read([self.configfile, os.path.expanduser("~/pushover.config")])
         if not self.files:
             logger.critical("No valid configuration found, exiting.")
             raise PushoverException("No valid configuration found")
