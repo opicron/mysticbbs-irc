@@ -2,7 +2,7 @@
 IRC client for MysticBBS
 
 Main
-![afbeelding width="300"](https://user-images.githubusercontent.com/472432/149822957-6bbaf478-1ab1-4e36-bef1-ef1ec1af4a22.png)
+![afbeelding](https://user-images.githubusercontent.com/472432/149822957-6bbaf478-1ab1-4e36-bef1-ef1ec1af4a22.png)
 
 MCI <> IRC color conversion:
 ![afbeelding](https://user-images.githubusercontent.com/472432/149822975-af312acf-9040-44e5-9b9a-70901912b213.png)
