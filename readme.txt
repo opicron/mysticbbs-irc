@@ -1,6 +1,6 @@
 
 ======================================================================================================
-## iCHAT v2.12 - open source MysticBBS IRC client 2021-2022
+## iCHAT v2.13 - open source MysticBBS IRC client 2021-2022
 ======================================================================================================
 
 https://github.com/opicron/mysticbbs-irc
@@ -19,6 +19,10 @@ For questions, private channels or operator status contact me:
 ======================================================================================================
 ## Changelog
 ======================================================================================================
+v2.13
+- [FIX] keypress bug
+- [FIX] unable to use other servers than [0] or [1]
+- [FIX] /SERVER X command
 v2.12
 - [FIX] two incorrect color conversions
 - [FIX] crash when incorrect irc code is received
@@ -96,10 +100,10 @@ v1.0
 ======================================================================================================
 
 important: 
-	edit config.py.sample file and rename it to config.py in the /scripts/irc/ directory.
+	edit your config.py.sample file and rename it to config.py in the /scripts/irc/ directory.
 
 (OPTIONAL FOR PAGING FUNCTIONALITY) 
-	edit pushover.config.sample file and rename it to pushover.config in /scripts/irc/
+	edit .pushover.sample file and rename it to .pushover in /scripts/irc/
 
 #Copy files
 ------------------------------------------------------------------------------------------------------
@@ -109,7 +113,7 @@ Copy contents of /irc/ to the correct mystic theme /script/irc/ folder
 
 Rename config.py.sample to config.py in /scripts/irc/
 
-(optional)Rename pushover.config.sample to pushover.config in /scripts/irc/
+(optional)Rename .pushover.sample to .pushover in /scripts/irc/
 
 (optional)if you want to used the pager module enable "enable_pushover = True" in config**
 
