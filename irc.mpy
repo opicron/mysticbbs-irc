@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# iCHAT 2.12 (c) opicron 2021-2022
+# iCHAT 2.13 (c) opicron 2021-2022
 #
 # Licence: GPL
 
@@ -47,22 +47,24 @@ if not hasattr(config, 'max_chat_lines'):   config.max_chat_lines   = 18
 if not hasattr(config, 'max_nick_len'):     config.max_nick_len     = 13
 if not hasattr(config, 'server_id'):        config.server_id        = 1
 if not hasattr(config, 'max_servers'):      config.max_servers      = 10
-if not hasattr(config, 'host'):     
-    config.host= [0 for i in range(config.max_servers)]
-    config.host[0] = "irc.opicron.eu"
-    host[1] = "irc.opicron.eu"
-if not hasattr(config, 'post'): 
-    config.port = [0 for i in range(config.max_servers)]
-    config.port[0] = 6667
-    config.port[1] = 6667
-if not hasattr(config, 'channel'): 
-    config.channel = [0 for i in range(config.max_servers)]
-    config.channel[0] = "#General"
-    config.channel[1] = "#Trivia"
-if not hasattr(config, 'password'): 
-    config.password = [0 for i in range(config.max_servers)]
-    config.password[0] = "iChatGen"
-    config.password[1] = "iChatTriv"
+
+#if not hasattr(config, 'host'):     
+#    config.host= [0 for i in range(config.max_servers)]
+#    config.host[0] = "irc.opicron.eu"
+#    host[1] = "irc.opicron.eu"
+#if not hasattr(config, 'post'): 
+#    config.port = [0 for i in range(config.max_servers)]
+#    config.port[0] = 6667
+#    config.port[1] = 6667
+#if not hasattr(config, 'channel'): 
+#    config.channel = [0 for i in range(config.max_servers)]
+#    config.channel[0] = "#General"
+#    config.channel[1] = "#Trivia"
+#if not hasattr(config, 'password'): 
+#    config.password = [0 for i in range(config.max_servers)]
+#    config.password[0] = "iChatGen"
+#    config.password[1] = "iChatTriv"
+
 if not hasattr(config, 'enable_pushover'):      config.enable_pushover      = False
 if not hasattr(config, 'pager_host'):           config.pager_host           = ""
 if not hasattr(config, 'pager_port'):           config.pager_port           = 6667
@@ -1556,290 +1558,291 @@ def thread_say( s, ):
                             pollcount = 0
             else:
                 key, extended = getkey( )
-                if key == KEY_ENTER:
-                    typebufferpos = 0
-                    writebufferpos = 0
-
-                    # only send if data to send
-                    if len( writebuffer ) > 0:
-                        TYPEBUFFER.append( writebuffer )
-                        command = writebuffer.split()[0].upper()
-
-                        if command == '/ME':
-                            send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " " + concat(writebuffer.split(),1) + "\x01\n") ##\x01 or \001
-                            chatbuffer.append( config.mci_action_color + NICK + " " + concat(writebuffer.split(),1) )
-
-                        elif command in ['/EXIT','/QUIT','/Q']:
-                            stop_threads = True
-
-                        elif command in ['/CHANNEL','/J','/JOIN']:
-                            if not "PAGER" in actions: #dont allow switch channel during pager chat
-                                lines = writebuffer.split()
-                                if len(lines)>1:
-                                    send("PART " + CHANNEL + "\n")
-                            
-                                    channel = lines[1]
-                                    if channel[0:1] <> '#':
-                                        channel = '#' + channel
-
-                                    if len(lines)>2:
-                                        password = lines[2]
-                                    else:
-                                        password = ""
-
-                                    connect( channel, password, False )
-                                    redraw = True
-
-                        elif command in ['/HELP','/H']:
-                            drawhelp()
-                            write('|PN')
-                            drawchat()
-                            drawhdr = True
-                            redraw = True
-                            redrawusers = True
-
-                        elif command == '/AWAY':
-                            for i, USER in enumerate( DEFUSERS ):
-                                if USER[1] == NICK:
-                                    if USER[0] == False:
-
-                                        if len( writebuffer ) == 5:
-                                            writebuffer = "/AWAY Away!"
-
-                                        lines = writebuffer.split()
-                                        send("AWAY " + " :" + concat(lines,1) + "\n")
-
-                        elif command == '/BACK':
-                            for i, USER in enumerate( DEFUSERS ):
-                                if USER[1] == NICK:
-                                    if USER[0] == True:
-
-                                        send("AWAY " + " :\n")
-
-                        #elif writebuffer.upper().find('/WHO') == 0:
-                        #    write("|NW")
-                
-                        elif command == '/KICK':
-                            lines = writebuffer.split()
-                            if len(lines) == 2:
-                                send("KICK " + CHANNEL + " :" + lines[1] + "\n")
-                            #elif len(lines) > 2: # how to add reason?
-                            #    s.send("KICK " + CHANNEL + " :" + lines[1] + " " + concat(lines,2) + "\n")
-
-                        elif command in ['/R','/REPLY']:
-                            if DESTPRVUSER != None:
-                                lines = writebuffer.split()
-                                if len(lines) > 1:
-                                    send( "PRIVMSG " + DESTPRVUSER + " :" + concat(lines,1) + "\n", True) 
-                                    chatbuffer.append( config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + DESTPRVUSER.replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix + config.mci_name_postfix + config.mci_default_fg + concat(lines,1) + "|09" )                                    
-                            else:
-                                chatbuffer.append( config.mci_notice + "No private message received yet" )
-
-                        elif command in ['/MSG','/TELL','/T']:
-                            lines = writebuffer.split()
-                            if len(lines) > 2:
-                                send( "PRIVMSG " + lines[1] + " :" + concat(lines,2) + "\n", True) 
-                                if len( USERS ) > 0: #get name from userlist
-                                    for i, USER in enumerate(USERS):
-                                        if USER[1].translate(None,'%@+').upper() == lines[1].upper():
-                                            lines[1] = USER[1].translate(None,'%@+') #if found use it
-                                say(config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + lines[1].replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix, concat(lines,2), config.mci_default_fg )
-
-                        elif command in ['/CLR','/CLS','/CLEAR']:
-                            chatbuffer = []
-                            redraw = True
-
-                        elif command == '/TOPIC':
-                            lines = writebuffer.split()                               
-                            if len(lines) > 1:
-                                send( "TOPIC " + CHANNEL + " :" + concat(lines,1) + "\n")
-
-                        elif command[0] <> '/':                                
-                            send( "PRIVMSG " + CHANNEL + " :" + mci_to_irc( writebuffer ) + "\n" )
-                            say( config.mci_name_color + NICK.replace("_","|08_"+config.mci_channel_color), writebuffer, config.mci_default_fg )
-
-                        writebuffer = ""                            
-                        redraw = True
-                        draw_prompt( False )
-
-                elif key == KEY_UP and extended == True:
-                    tabcomplete = False
-                    if len( TYPEBUFFER ) > typebufferpos:
-                        typebufferpos += 1
-                        writebuffer = TYPEBUFFER[ len( TYPEBUFFER ) - typebufferpos]
-                        writebufferpos = len( writebuffer )
-                        draw_prompt( False ) 
-
-                elif key == KEY_DOWN and extended == True:
-                    tabcomplete = False
-                    typebufferpos -= 1
-
-                    if typebufferpos > 0:
-                        writebuffer = TYPEBUFFER[ len( TYPEBUFFER ) - typebufferpos]
-                        writebufferpos = len( writebuffer )
-                    else:
-                        writebuffer = ""
+                if len(key) > 0:
+                    if key == KEY_ENTER:
                         typebufferpos = 0
                         writebufferpos = 0
 
-                    draw_prompt( False ) 
+                        # only send if data to send
+                        if len( writebuffer ) > 0:
+                            TYPEBUFFER.append( writebuffer )
+                            command = writebuffer.split()[0].upper()
 
-                elif key == KEY_LEFT and extended == True:
-                    writebufferpos -= 1
-                    if writebufferpos < 0:
-                        writebufferpos = 0
-                    else:
-                        draw_prompt( False, False, True )
+                            if command == '/ME':
+                                send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " " + concat(writebuffer.split(),1) + "\x01\n") ##\x01 or \001
+                                chatbuffer.append( config.mci_action_color + NICK + " " + concat(writebuffer.split(),1) )
 
-                elif key == KEY_RIGHT and extended == True:
-                    writebufferpos += 1
-                    if writebufferpos > len(writebuffer):
-                        writebufferpos = len(writebuffer)
-                    else:
-                        draw_prompt( False, False, True )
+                            elif command in ['/EXIT','/QUIT','/Q']:
+                                stop_threads = True
 
-                elif key == KEY_PGUP and extended == True:                    
-                    if (len( chatbuffer ) - config.max_chat_lines) > chatbufferpos:
-                        chatbufferpos = chatbufferpos + 1
-                        redraw = True
+                            elif command in ['/CHANNEL','/J','/JOIN']:
+                                if not "PAGER" in actions: #dont allow switch channel during pager chat
+                                    lines = writebuffer.split()
+                                    if len(lines)>1:
+                                        send("PART " + CHANNEL + "\n")
+                                
+                                        channel = lines[1]
+                                        if channel[0:1] <> '#':
+                                            channel = '#' + channel
 
-                elif key == KEY_PGDN and extended == True:
-                    if chatbufferpos > 0:
-                        chatbufferpos = chatbufferpos - 1
-                        redraw = True
-
-                elif key == KEY_HOME and extended == True:
-                    writebufferpos = 0
-                    draw_prompt( False, False, True )
-
-                    #old home
-                    #if chatbufferpos < len( chatbuffer ) - config.max_chat_lines:
-                    #    chatbufferpos = len( chatbuffer ) - config.max_chat_lines
-                    #    if chatbufferpos < 0:
-                    #        chatbufferpos = 0                        
-                    #    redraw = True
-
-
-                elif key == KEY_END and extended == True:
-                    writebufferpos = len( writebuffer )
-                    draw_prompt( False, False, True )
-
-                    # old end
-                    #if chatbufferpos > 0:
-                    #    chatbufferpos = 0
-                    #    redraw = True                            
-
-                #toggle names
-                elif key == KEY_CTRLN and extended == False:
-                    if drawusers == False:
-                        drawusers = True
-                    else:
-                        drawusers = False
-
-                    redrawusers = True
-                    redraw = True
-                    
-                #toggle names
-                elif key == KEY_CTRLZ and extended == False:
-                    drawhelp()
-                    write('|PN')
-                    drawchat()
-                    drawhdr = True
-                    redraw = True
-                    redrawusers = True
-                    
-                #draw or hide irc data
-                elif key == KEY_CTRLS and extended == False:
-                    if draw_irc == False:
-                        draw_irc = True
-                    else:
-                        draw_irc = False
-
-                    for y in range(1,config.max_chat_lines): #clear screen
-                        gotoxy(mci_extract_x(config.mci_chat_xy),mci_extract_y(config.mci_chat_xy)+y)
-                        if drawusers == False or y > len(USERS)+1:
-                            write( config.mci_clearline )
-                        else:
-                            write( "|$X63 " )
-
-                    redraw = True
-
-                # stop threads on escape
-                elif key == KEY_ESCAPE and extended == False:
-                    if writebuffer[writebufferpos-2:writebufferpos] <> '@[': #avoid exit on insert key (netrunner beta 20)
-                        stop_threads = True
-
-                # autocomplete names
-                elif key == KEY_TAB and extended == False:
-                    words = writebuffer.split()
-
-                    if words:
-                        word = words.pop()
-                        if tabcomplete == True:
-                            word = tabword
-                            if tabindex >= len( USERS ) - 1:
-                                tabindex = -1
-
-                        if len( USERS ) > 0:
-                            for i, USER in enumerate(USERS):
-                                if USER[1].translate(None,'%@+').upper().find(word.upper()) == 0:
-                                    if (tabcomplete == True and tabindex < i) or tabcomplete == False:
-
-                                        tabcomplete = True
-                                        tabindex = i
-                                        tabword = word
-
-                                        if len(words) == 0:
-                                            writebuffer = ' '.join(words) + USER[1].translate(None,'%@+')
+                                        if len(lines)>2:
+                                            password = lines[2]
                                         else:
-                                            writebuffer = ' '.join(words) + ' ' + USER[1].translate(None,'%@+')
-                
-                                        writebufferpos = len (writebuffer)
-                                        draw_prompt( False )
-                                        break
+                                            password = ""
 
-                # backspace    
-                elif key == KEY_BACKSPACE and extended == False:
-                    if writebufferpos > 0:
+                                        connect( channel, password, False )
+                                        redraw = True
+
+                            elif command in ['/HELP','/H']:
+                                drawhelp()
+                                write('|PN')
+                                drawchat()
+                                drawhdr = True
+                                redraw = True
+                                redrawusers = True
+
+                            elif command == '/AWAY':
+                                for i, USER in enumerate( DEFUSERS ):
+                                    if USER[1] == NICK:
+                                        if USER[0] == False:
+
+                                            if len( writebuffer ) == 5:
+                                                writebuffer = "/AWAY Away!"
+
+                                            lines = writebuffer.split()
+                                            send("AWAY " + " :" + concat(lines,1) + "\n")
+
+                            elif command == '/BACK':
+                                for i, USER in enumerate( DEFUSERS ):
+                                    if USER[1] == NICK:
+                                        if USER[0] == True:
+
+                                            send("AWAY " + " :\n")
+
+                            #elif writebuffer.upper().find('/WHO') == 0:
+                            #    write("|NW")
+                    
+                            elif command == '/KICK':
+                                lines = writebuffer.split()
+                                if len(lines) == 2:
+                                    send("KICK " + CHANNEL + " :" + lines[1] + "\n")
+                                #elif len(lines) > 2: # how to add reason?
+                                #    s.send("KICK " + CHANNEL + " :" + lines[1] + " " + concat(lines,2) + "\n")
+
+                            elif command in ['/R','/REPLY']:
+                                if DESTPRVUSER != None:
+                                    lines = writebuffer.split()
+                                    if len(lines) > 1:
+                                        send( "PRIVMSG " + DESTPRVUSER + " :" + concat(lines,1) + "\n", True) 
+                                        chatbuffer.append( config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + DESTPRVUSER.replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix + config.mci_name_postfix + config.mci_default_fg + concat(lines,1) + "|09" )                                    
+                                else:
+                                    chatbuffer.append( config.mci_notice + "No private message received yet" )
+
+                            elif command in ['/MSG','/TELL','/T']:
+                                lines = writebuffer.split()
+                                if len(lines) > 2:
+                                    send( "PRIVMSG " + lines[1] + " :" + concat(lines,2) + "\n", True) 
+                                    if len( USERS ) > 0: #get name from userlist
+                                        for i, USER in enumerate(USERS):
+                                            if USER[1].translate(None,'%@+').upper() == lines[1].upper():
+                                                lines[1] = USER[1].translate(None,'%@+') #if found use it
+                                    say(config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + lines[1].replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix, concat(lines,2), config.mci_default_fg )
+
+                            elif command in ['/CLR','/CLS','/CLEAR']:
+                                chatbuffer = []
+                                redraw = True
+
+                            elif command == '/TOPIC':
+                                lines = writebuffer.split()                               
+                                if len(lines) > 1:
+                                    send( "TOPIC " + CHANNEL + " :" + concat(lines,1) + "\n")
+
+                            elif command[0] <> '/':                                
+                                send( "PRIVMSG " + CHANNEL + " :" + mci_to_irc( writebuffer ) + "\n" )
+                                say( config.mci_name_color + NICK.replace("_","|08_"+config.mci_channel_color), writebuffer, config.mci_default_fg )
+
+                            writebuffer = ""                            
+                            redraw = True
+                            draw_prompt( False )
+
+                    elif key == KEY_UP and extended == True:
                         tabcomplete = False
-                        writebuffer = writebuffer[:writebufferpos-1] + writebuffer[writebufferpos:]
+                        if len( TYPEBUFFER ) > typebufferpos:
+                            typebufferpos += 1
+                            writebuffer = TYPEBUFFER[ len( TYPEBUFFER ) - typebufferpos]
+                            writebufferpos = len( writebuffer )
+                            draw_prompt( False ) 
+
+                    elif key == KEY_DOWN and extended == True:
+                        tabcomplete = False
+                        typebufferpos -= 1
+
+                        if typebufferpos > 0:
+                            writebuffer = TYPEBUFFER[ len( TYPEBUFFER ) - typebufferpos]
+                            writebufferpos = len( writebuffer )
+                        else:
+                            writebuffer = ""
+                            typebufferpos = 0
+                            writebufferpos = 0
+
+                        draw_prompt( False ) 
+
+                    elif key == KEY_LEFT and extended == True:
                         writebufferpos -= 1
-
-                    if writebufferpos == len(writebuffer):
-                        draw_prompt( False, True )
-                    else:
-                        draw_prompt( False )                        
-
-                # delete
-                elif key == KEY_DEL and extended == True:
-                    if writebufferpos < len(writebuffer):
-                        tabcomplete = False
-                        writebuffer = writebuffer[:writebufferpos] + writebuffer[writebufferpos+1:]
-                        draw_prompt( False )                        
-                
-                # save key to buffer
-                elif ord(key) in range(32,128) and extended == False:
-                    if len(writebuffer) < 128: #do not allow large sentences
-                        tabcomplete = False
-                        redraw = False
-
-                        #auto capitol first character
-                        if len(writebuffer) == 0:
-                            if config.uppercase_first_key == True:
-                                key = key.upper()
-
-                        if writebufferpos > len( writebuffer ) - 1:
-                            writebuffer = writebuffer + key
+                        if writebufferpos < 0:
+                            writebufferpos = 0
                         else:
-                            writebuffer = writebuffer[:writebufferpos] + key + writebuffer[writebufferpos:]
+                            draw_prompt( False, False, True )
 
+                    elif key == KEY_RIGHT and extended == True:
                         writebufferpos += 1
-
-                        #try to draw only new char, except when | color code is used, or insert key
-                        if writebufferpos < len( writebuffer ) or writebuffer.rfind('|') > len(writebuffer) - 4:
-                            draw_prompt( False )                           
+                        if writebufferpos > len(writebuffer):
+                            writebufferpos = len(writebuffer)
                         else:
-                            draw_prompt( True )                            
+                            draw_prompt( False, False, True )
+
+                    elif key == KEY_PGUP and extended == True:                    
+                        if (len( chatbuffer ) - config.max_chat_lines) > chatbufferpos:
+                            chatbufferpos = chatbufferpos + 1
+                            redraw = True
+
+                    elif key == KEY_PGDN and extended == True:
+                        if chatbufferpos > 0:
+                            chatbufferpos = chatbufferpos - 1
+                            redraw = True
+
+                    elif key == KEY_HOME and extended == True:
+                        writebufferpos = 0
+                        draw_prompt( False, False, True )
+
+                        #old home
+                        #if chatbufferpos < len( chatbuffer ) - config.max_chat_lines:
+                        #    chatbufferpos = len( chatbuffer ) - config.max_chat_lines
+                        #    if chatbufferpos < 0:
+                        #        chatbufferpos = 0                        
+                        #    redraw = True
+
+
+                    elif key == KEY_END and extended == True:
+                        writebufferpos = len( writebuffer )
+                        draw_prompt( False, False, True )
+
+                        # old end
+                        #if chatbufferpos > 0:
+                        #    chatbufferpos = 0
+                        #    redraw = True                            
+
+                    #toggle names
+                    elif key == KEY_CTRLN and extended == False:
+                        if drawusers == False:
+                            drawusers = True
+                        else:
+                            drawusers = False
+
+                        redrawusers = True
+                        redraw = True
+                        
+                    #toggle names
+                    elif key == KEY_CTRLZ and extended == False:
+                        drawhelp()
+                        write('|PN')
+                        drawchat()
+                        drawhdr = True
+                        redraw = True
+                        redrawusers = True
+                        
+                    #draw or hide irc data
+                    elif key == KEY_CTRLS and extended == False:
+                        if draw_irc == False:
+                            draw_irc = True
+                        else:
+                            draw_irc = False
+
+                        for y in range(1,config.max_chat_lines): #clear screen
+                            gotoxy(mci_extract_x(config.mci_chat_xy),mci_extract_y(config.mci_chat_xy)+y)
+                            if drawusers == False or y > len(USERS)+1:
+                                write( config.mci_clearline )
+                            else:
+                                write( "|$X63 " )
+
+                        redraw = True
+
+                    # stop threads on escape
+                    elif key == KEY_ESCAPE and extended == False:
+                        if writebuffer[writebufferpos-2:writebufferpos] <> '@[': #avoid exit on insert key (netrunner beta 20)
+                            stop_threads = True
+
+                    # autocomplete names
+                    elif key == KEY_TAB and extended == False:
+                        words = writebuffer.split()
+
+                        if words:
+                            word = words.pop()
+                            if tabcomplete == True:
+                                word = tabword
+                                if tabindex >= len( USERS ) - 1:
+                                    tabindex = -1
+
+                            if len( USERS ) > 0:
+                                for i, USER in enumerate(USERS):
+                                    if USER[1].translate(None,'%@+').upper().find(word.upper()) == 0:
+                                        if (tabcomplete == True and tabindex < i) or tabcomplete == False:
+
+                                            tabcomplete = True
+                                            tabindex = i
+                                            tabword = word
+
+                                            if len(words) == 0:
+                                                writebuffer = ' '.join(words) + USER[1].translate(None,'%@+')
+                                            else:
+                                                writebuffer = ' '.join(words) + ' ' + USER[1].translate(None,'%@+')
+                    
+                                            writebufferpos = len (writebuffer)
+                                            draw_prompt( False )
+                                            break
+
+                    # backspace    
+                    elif key == KEY_BACKSPACE and extended == False:
+                        if writebufferpos > 0:
+                            tabcomplete = False
+                            writebuffer = writebuffer[:writebufferpos-1] + writebuffer[writebufferpos:]
+                            writebufferpos -= 1
+
+                        if writebufferpos == len(writebuffer):
+                            draw_prompt( False, True )
+                        else:
+                            draw_prompt( False )                        
+
+                    # delete
+                    elif key == KEY_DEL and extended == True:
+                        if writebufferpos < len(writebuffer):
+                            tabcomplete = False
+                            writebuffer = writebuffer[:writebufferpos] + writebuffer[writebufferpos+1:]
+                            draw_prompt( False )                        
+                    
+                    # save key to buffer
+                    elif ord(key) in range(32,128) and extended == False:
+                        if len(writebuffer) < 128: #do not allow large sentences
+                            tabcomplete = False
+                            redraw = False
+
+                            #auto capitol first character
+                            if len(writebuffer) == 0:
+                                if config.uppercase_first_key == True:
+                                    key = key.upper()
+
+                            if writebufferpos > len( writebuffer ) - 1:
+                                writebuffer = writebuffer + key
+                            else:
+                                writebuffer = writebuffer[:writebufferpos] + key + writebuffer[writebufferpos:]
+
+                            writebufferpos += 1
+
+                            #try to draw only new char, except when | color code is used, or insert key
+                            if writebufferpos < len( writebuffer ) or writebuffer.rfind('|') > len(writebuffer) - 4:
+                                draw_prompt( False )                           
+                            else:
+                                draw_prompt( True )                            
                                                             
             if redraw == True:
                 toggle_cursor(False)
@@ -1964,7 +1967,7 @@ if "PAGER" in actions:
     HOST = config.pager_host
     PORT = config.pager_port
 else:
-    #set public/interbbs channel settings 
+    #set public/interbbs channel settings z
     HOST = config.host[config.server_id] 
     PORT = config.port[config.server_id] 
 
