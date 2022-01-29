@@ -11,23 +11,21 @@
 
 #------------------------------------------------------------------------------
 # default server - this id will be used if no server id is used on command line
-server_id = 1
+server_id = 0
 
 # initialize server variables - increase max if required
 max_servers = 10
 
 host = [0 for i in range(max_servers)]
-host = [0 for i in range(max_servers)]
 port = [0 for i in range(max_servers)]
 channel = [0 for i in range(max_servers)]
 password = [0 for i in range(max_servers)]
 
-
 # server #0 - make sure to use the number in the brackets [x]
-host     [0] = "irc.opicron.eu"
-port     [0] = 6667
-channel  [0] = "#General"
-password [0] = "iChatGen"
+host     [0] = "slackers.ddns.net"
+port     [0] = 7000
+channel  [0] = "#slackers"
+password [0] = ""
 
 # server #1 - make sure to use the number in the brackets [x]
 host     [1] = "irc.opicron.eu"
@@ -35,6 +33,11 @@ port     [1] = 6667
 channel  [1] = "#Trivia"
 password [1] = "iChatTriv"
 
+# server #2 - make sure to use the number in the brackets [x]
+host     [2] = "irc.opicron.eu"
+port     [2] = 6667
+channel  [2] = "#General"
+password [2] = "iChatGen"
 
 # To use paging functionality you need the python [request] module (for pushover API)
 # by default this is disabled because not all python installations have this module enabled
