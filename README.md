@@ -1,5 +1,19 @@
 # mysticbbs-irc
-IRC client for MysticBBS
+IRC client for MysticBBS v2.13
+
+open IRC chat client with pager 
+support. Threaded non blocking  
+design and 100% configurable.   
+
+connect to any existing server  
+or join the preset servers.     
+
+basic irc commands, fully aware 
+away status name tab, low cpu   
+usage, 100% configurable, full 
+mci <-> irc color support, name 
+tab toggle, non blocking thread 
+design, mci parser output..     
 
 Main
 ![afbeelding](https://user-images.githubusercontent.com/472432/149822957-6bbaf478-1ab1-4e36-bef1-ef1ec1af4a22.png)
