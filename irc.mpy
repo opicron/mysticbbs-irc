@@ -1042,7 +1042,7 @@ def draw_prompt( onlylastchar=False, removechar=False, posonly=False ):
 
 
     if not posonly:
-        write( config.mci_default_bg + config.mci_clearline + '\r' )
+        write( config.mci_default_bg + config.mci_clearline + '\r\n' )
 
     if not onlylastchar:
         toggle_cursor(True)
@@ -1303,7 +1303,7 @@ def thread_listen(s):
                                         away = True
 
                                 USERS.append( [away, NAME] )
-                                send("WHOIS" + " " + tmpname + "\n", True)
+                                send("WHOIS" + " " + tmpname + "\r\n", True)
 
                     # part
                     elif ( command == "PART" ): 
@@ -1471,7 +1471,7 @@ def thread_page(s,):
         if (count == 20 or count == 100): # and stop_page == False:
 
             #s.send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + SYSOP + "\n")
-            send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + SYSOP + "\n")
+            send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + SYSOP + "\r\n")
 
         # check key input for abort
         if keypressed( ):
@@ -1488,9 +1488,9 @@ def thread_page(s,):
 
     if start_chat == False:
         if user_interrupt == True:
-            send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " has stopped the pager" + "\x01\n")
+            send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " has stopped the pager" + "\x01\r\n")
         else:
-            send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " let the pager time-out" + "\x01\n")            
+            send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " let the pager time-out" + "\x01\r\n")            
 
         stop_threads = True
 
@@ -1549,7 +1549,7 @@ def thread_say( s, ):
 
                 if pollusers == True:
                     if pollcount == 1:
-                        send( "NAMES " + CHANNEL + "\n", True ) # send IRC ISON request, to make sure away status is removed
+                        send( "NAMES " + CHANNEL + "\r\n", True ) # send IRC ISON request, to make sure away status is removed
                     if "PAGER" in actions:
                         if pollcount > config.sysop_polltime:
                             pollcount = 0
@@ -1569,7 +1569,7 @@ def thread_say( s, ):
                             command = writebuffer.split()[0].upper()
 
                             if command == '/ME':
-                                send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " " + concat(writebuffer.split(),1) + "\x01\n") ##\x01 or \001
+                                send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " " + concat(writebuffer.split(),1) + "\x01\r\n") ##\x01 or \001
                                 chatbuffer.append( config.mci_action_color + NICK + " " + concat(writebuffer.split(),1) )
 
                             elif command in ['/EXIT','/QUIT','/Q']:
@@ -1579,7 +1579,7 @@ def thread_say( s, ):
                                 if not "PAGER" in actions: #dont allow switch channel during pager chat
                                     lines = writebuffer.split()
                                     if len(lines)>1:
-                                        send("PART " + CHANNEL + "\n")
+                                        send("PART " + CHANNEL + "\r\n")
                                 
                                         channel = lines[1]
                                         if channel[0:1] <> '#':
@@ -1617,7 +1617,7 @@ def thread_say( s, ):
                                     if USER[1] == NICK:
                                         if USER[0] == True:
 
-                                            send("AWAY " + " :\n")
+                                            send("AWAY " + " :\r\n")
 
                             #elif writebuffer.upper().find('/WHO') == 0:
                             #    write("|NW")
@@ -1625,7 +1625,7 @@ def thread_say( s, ):
                             elif command == '/KICK':
                                 lines = writebuffer.split()
                                 if len(lines) == 2:
-                                    send("KICK " + CHANNEL + " :" + lines[1] + "\n")
+                                    send("KICK " + CHANNEL + " :" + lines[1] + "\r\n")
                                 #elif len(lines) > 2: # how to add reason?
                                 #    s.send("KICK " + CHANNEL + " :" + lines[1] + " " + concat(lines,2) + "\n")
 
@@ -1633,7 +1633,7 @@ def thread_say( s, ):
                                 if DESTPRVUSER != None:
                                     lines = writebuffer.split()
                                     if len(lines) > 1:
-                                        send( "PRIVMSG " + DESTPRVUSER + " :" + concat(lines,1) + "\n", True) 
+                                        send( "PRIVMSG " + DESTPRVUSER + " :" + concat(lines,1) + "\r\n", True) 
                                         chatbuffer.append( config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + DESTPRVUSER.replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix + config.mci_name_postfix + config.mci_default_fg + concat(lines,1) + "|09" )                                    
                                 else:
                                     chatbuffer.append( config.mci_notice + "No private message received yet" )
@@ -1641,7 +1641,7 @@ def thread_say( s, ):
                             elif command in ['/MSG','/TELL','/T']:
                                 lines = writebuffer.split()
                                 if len(lines) > 2:
-                                    send( "PRIVMSG " + lines[1] + " :" + concat(lines,2) + "\n", True) 
+                                    send( "PRIVMSG " + lines[1] + " :" + concat(lines,2) + "\r\n", True) 
                                     if len( USERS ) > 0: #get name from userlist
                                         for i, USER in enumerate(USERS):
                                             if USER[1].translate(None,'%@+').upper() == lines[1].upper():
@@ -1655,10 +1655,10 @@ def thread_say( s, ):
                             elif command == '/TOPIC':
                                 lines = writebuffer.split()                               
                                 if len(lines) > 1:
-                                    send( "TOPIC " + CHANNEL + " :" + concat(lines,1) + "\n")
+                                    send( "TOPIC " + CHANNEL + " :" + concat(lines,1) + "\r\n")
 
                             elif command[0] <> '/':                                
-                                send( "PRIVMSG " + CHANNEL + " :" + mci_to_irc( writebuffer ) + "\n" )
+                                send( "PRIVMSG " + CHANNEL + " :" + mci_to_irc( writebuffer ) + "\r\n" )
                                 say( config.mci_name_color + NICK.replace("_","|08_"+config.mci_channel_color), writebuffer, config.mci_default_fg )
 
                             writebuffer = ""                            
@@ -1988,8 +1988,8 @@ SYSOP = cfg['sysopname']
 user = getuser(0) 
 NICK = user['handle'].translate(None, ' ')[:config.max_nick_len] #no spaces and max 9 chars
 
-if NICK.upper() == SYSOP.upper():
-    NICK = NICK[:config.max_nick_len-1] + "_" # change sysop name
+#if NICK.upper() == SYSOP.upper():
+#    NICK = NICK[:config.max_nick_len-1] + "_" # change sysop name
 
 if NICK[:1].isdigit():
     NICK = "_" + NICK[:config.max_nick_len-1] # prevent number nick names
