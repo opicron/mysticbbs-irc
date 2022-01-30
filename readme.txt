@@ -20,6 +20,7 @@ For questions, private channels or operator status contact me:
 ## Changelog
 ======================================================================================================
 v2.13
+- [FIX] flush to draw all data (thanks CJ)
 - [FIX] keypress bug
 - [FIX] unable to use other servers than [0] or [1]
 - [FIX] /SERVER X command
