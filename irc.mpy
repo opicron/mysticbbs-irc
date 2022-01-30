@@ -1053,7 +1053,8 @@ def draw_prompt( onlylastchar=False, removechar=False, posonly=False ):
     else:        
         write( mci_adjust_x( config.mci_chat_prompt_xy, config.mci_prompt_len + 4 ) )
 
-    write('\r\n')
+    flush()
+    
 
 #-----------------------------------------------------------------------------------------------------
 
@@ -1561,7 +1562,7 @@ def thread_say( s, ):
                         if pollcount > config.user_polltime:
                             pollcount = 0
             else:
-                key, extended = getkey( 0.05 )
+                key, extended = getkey( )
                 if len(key) > 0:
                     if key == KEY_ENTER:
                         typebufferpos = 0
@@ -1923,6 +1924,8 @@ def thread_say( s, ):
                 toggle_cursor ( True )
                 draw_prompt( False, False, True )
                 redraw = False
+                
+                flush()
 
             if error_halt == True:
                 stop_threads = True
