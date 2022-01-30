@@ -1,7 +1,7 @@
 [pushover]
 #
 # fill in the values with your app token and user key
-# save this file as .pushover in the irc folder.
+# save this file as pushover.config in the irc folder.
 #
 # go to https://pushover.net/apps/build to create an app key.
 # there is no need to use " or ' signs.
