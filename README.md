@@ -1,5 +1,7 @@
 # IRC client for MysticBBS v2.13
 
+!! READ THE README.TXT BEFORE INSTALL !!
+
 Open IRC chat client with pager support. Threaded non blocking design and 100% configurable.   
 Connect to any existing server or join the preset servers.     
 
