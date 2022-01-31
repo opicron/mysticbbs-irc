@@ -1,6 +1,6 @@
 
 ======================================================================================================
-## iCHAT v2.13 - open source MysticBBS IRC client 2021-2022
+## iCHAT v2.14 - open source MysticBBS IRC client 2021-2022
 ======================================================================================================
 
 https://github.com/opicron/mysticbbs-irc
@@ -19,6 +19,9 @@ For questions, private channels or operator status contact me:
 ======================================================================================================
 ## Changelog
 ======================================================================================================
+v2.14
+- [FIX] make sysop name for pager configurable
+- [FIX] remove trailing slash from pager notify
 v2.13
 - [FIX] properly flush data (thanks CJ)
 - [FIX] empty keypress bug
