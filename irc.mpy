@@ -52,7 +52,7 @@ if not hasattr(config, 'max_servers'):      config.max_servers      = 10
 #    config.host= [0 for i in range(config.max_servers)]
 #    config.host[0] = "irc.opicron.eu"
 #    host[1] = "irc.opicron.eu"
-#if not hasattr(config, 'posat'): 
+#if not hasattr(config, 'port'): 
 #    config.port = [0 for i in range(config.max_servers)]
 #    config.port[0] = 6667
 #    config.port[1] = 6667
