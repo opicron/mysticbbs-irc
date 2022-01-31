@@ -41,6 +41,7 @@ password [2] = "iChatGen"
 
 # To use paging functionality you need the python [request] module (for pushover API)
 # by default this is disabled because not all python installations have this module enabled
+# Also it is possible to notify pages by ZNC bouncer too. Igloo IRC for iPhone supports this.
 enable_pushover = False
 
 # (OPTIONAL) pager channel settings *KEEP THESE VERY PRIVATE* 
@@ -56,6 +57,11 @@ pager_port     = 6667
 pager_channel  = ""
 pager_password = ""
 # to request an private channel on my irc daemon contact me on bbs.opicron.eu or send me a private netmail on 
+
+# which name in private channel should the pager react to? Any response from this name
+# will pull the user into IRC from paging screen. Defaults to Sysop name configured in MysticBBS. 
+# Override to use another name.
+pager_sysop_name = ""
 
 
 ###################################################################################################################
