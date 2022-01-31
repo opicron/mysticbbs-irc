@@ -48,22 +48,22 @@ if not hasattr(config, 'max_nick_len'):     config.max_nick_len     = 13
 if not hasattr(config, 'server_id'):        config.server_id        = 1
 if not hasattr(config, 'max_servers'):      config.max_servers      = 10
 
-#if not hasattr(config, 'host'):     
-#    config.host= [0 for i in range(config.max_servers)]
-#    config.host[0] = "irc.opicron.eu"
-#    host[1] = "irc.opicron.eu"
-#if not hasattr(config, 'port'): 
-#    config.port = [0 for i in range(config.max_servers)]
-#    config.port[0] = 6667
-#    config.port[1] = 6667
-#if not hasattr(config, 'channel'): 
-#    config.channel = [0 for i in range(config.max_servers)]
-#    config.channel[0] = "#General"
-#    config.channel[1] = "#Trivia"
-#if not hasattr(config, 'password'): 
-#    config.password = [0 for i in range(config.max_servers)]
-#    config.password[0] = "iChatGen"
-#    config.password[1] = "iChatTriv"
+if not hasattr(config, 'host'):     
+    config.host= [0 for i in range(config.max_servers)]
+    config.host[0] = "irc.opicron.eu"
+    host[1] = "irc.opicron.eu"
+if not hasattr(config, 'port'): 
+    config.port = [0 for i in range(config.max_servers)]
+    config.port[0] = 6667
+    config.port[1] = 6667
+if not hasattr(config, 'channel'): 
+    config.channel = [0 for i in range(config.max_servers)]
+    config.channel[0] = "#General"
+    config.channel[1] = "#Trivia"
+if not hasattr(config, 'password'): 
+    config.password = [0 for i in range(config.max_servers)]
+    config.password[0] = "iChatGen"
+    config.password[1] = "iChatTriv"
 
 if not hasattr(config, 'enable_pushover'):      config.enable_pushover      = False
 if not hasattr(config, 'pager_sysop_name'):     config.pager_sysop_name     = ""
