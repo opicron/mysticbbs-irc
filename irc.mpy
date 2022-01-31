@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# iCHAT 2.13 (c) opicron 2021-2022
+# iCHAT 2.14 (c) opicron 2021-2022
 #
 # Licence: GPL
 
@@ -52,7 +52,7 @@ if not hasattr(config, 'max_servers'):      config.max_servers      = 10
 #    config.host= [0 for i in range(config.max_servers)]
 #    config.host[0] = "irc.opicron.eu"
 #    host[1] = "irc.opicron.eu"
-#if not hasattr(config, 'post'): 
+#if not hasattr(config, 'posat'): 
 #    config.port = [0 for i in range(config.max_servers)]
 #    config.port[0] = 6667
 #    config.port[1] = 6667
@@ -66,6 +66,7 @@ if not hasattr(config, 'max_servers'):      config.max_servers      = 10
 #    config.password[1] = "iChatTriv"
 
 if not hasattr(config, 'enable_pushover'):      config.enable_pushover      = False
+if not hasattr(config, 'pager_sysop_name'):     config.pager_sysop_name     = ""
 if not hasattr(config, 'pager_host'):           config.pager_host           = ""
 if not hasattr(config, 'pager_port'):           config.pager_port           = 6667
 if not hasattr(config, 'pager_channel'):        config.pager_channel        = ""
@@ -1198,7 +1199,7 @@ def thread_listen(s):
                             # if message
                             else:
 
-                                if FROM.upper() == SYSOP.upper(): 
+                                if FROM.upper() == config.pager_sysop_name.upper(): 
                                     #start chat if response written
                                     if start_chat == False:
                                         start_chat = True
@@ -1244,7 +1245,7 @@ def thread_listen(s):
                                     USERS[i][0] = True
                                     #redrawusers = True #dont redraw, only on ISON_RPL
 
-                                if tmpname.upper() == SYSOP.upper():                           
+                                if tmpname.upper() == config.pager_sysop_name.upper():                           
                                     if "PAGER" in actions:
                                         if sysop_left == False:
                                             # avoid false positive
@@ -1465,7 +1466,7 @@ def thread_page(s,):
             if config.enable_pushover == True:
 
                 try:                    
-                    push.send_message( NICK + " paging IRC", sound = "pushover", url = "irc://" + HOST + "/" + CHANNEL + "/" )
+                    push.send_message( NICK + " paging IRC", sound = "pushover", url = "irc://" + HOST + "/" + CHANNEL )
                     
                 except SomeError:
                     writeln( "pushover failed" )
@@ -1473,10 +1474,10 @@ def thread_page(s,):
             pushover_count = pushover_count + 1
 
         # send irc message
-        if (count == 20 or count == 100): # and stop_page == False:
+        if (count == 10 or count == 30 or count == 50 or count == 100): # and stop_page == False:
 
             #s.send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + SYSOP + "\n")
-            send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + SYSOP)
+            send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + config.pager_sysop_name)
 
         # check key input for abort
         if keypressed( ):
@@ -1991,6 +1992,8 @@ if config.enable_pushover:
 
 cfg  = getcfg()   
 SYSOP = cfg['sysopname']
+if len(config.pager_sysop_name) == 0:
+    config.pager_sysop_name = SYSOP
 
 user = getuser(0) 
 NICK = user['handle'].translate(None, ' ')[:config.max_nick_len] #no spaces and max 9 chars
