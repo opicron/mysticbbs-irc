@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# iCHAT 2.14 (c) opicron 2021-2022
+# iCHAT 2.13 (c) opicron 2021-2022
 #
 # Licence: GPL
 
@@ -1053,10 +1053,7 @@ def draw_prompt( onlylastchar=False, removechar=False, posonly=False ):
         write( mci_adjust_x( config.mci_chat_prompt_xy, writebufferpos + 4 ) )
     else:        
         write( mci_adjust_x( config.mci_chat_prompt_xy, config.mci_prompt_len + 4 ) )
-
-    flush()
     
-
 #-----------------------------------------------------------------------------------------------------
 
 
@@ -1457,6 +1454,7 @@ def thread_page(s,):
         if pos <> oldpos:
             oldpos = pos
             updatebar(config.pager_bar_startpos, count, pagecount, config.pager_bar_length, False)
+            flush()
 
         time.sleep( 0.1 )
 
@@ -1489,6 +1487,7 @@ def thread_page(s,):
                 break
 
         count = count + 1
+
 
     # abort if start_chat has not been set by listen thread
 
@@ -1926,10 +1925,10 @@ def thread_say( s, ):
                 draw_prompt( False, False, True )
                 redraw = False
                 
-                flush()
-
             if error_halt == True:
                 stop_threads = True
+
+            flush()
 
     except Exception as e:                    
         msg = "Keyboard thread exception: %s" % ( str( traceback.format_exc() ) )
