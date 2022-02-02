@@ -20,6 +20,7 @@ For questions, private channels or operator status contact me:
 ## Changelog
 ======================================================================================================
 v2.15
+- [ADD] /NAMES command to toggle name tab
 - [FIX] dont draw footer is nametab too long
 - [FIX] show correct localtime in pagers
 - [ADD] option to poll away status of users (set to False by default to prevent flood kick)
