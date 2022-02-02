@@ -1,6 +1,6 @@
 
 ======================================================================================================
-## iCHAT v2.14 - open source MysticBBS IRC client 2021-2022
+## iCHAT v2.15 - open source MysticBBS IRC client 2021-2022
 ======================================================================================================
 
 https://github.com/opicron/mysticbbs-irc
@@ -19,6 +19,11 @@ For questions, private channels or operator status contact me:
 ======================================================================================================
 ## Changelog
 ======================================================================================================
+v2.15
+- [FIX] dont draw footer is nametab too long
+- [FIX] show correct localtime in pagers
+- [ADD] option to poll away status of users (set to False by default to prevent flood kick)
+        enable this option on irc channel with +/- 10 users to show live away status
 v2.14
 - [FIX] make sysop name for pager configurable
 - [FIX] remove trailing slash from pager notify
