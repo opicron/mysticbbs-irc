@@ -1,4 +1,4 @@
-# IRC client for MysticBBS v2.13
+# IRC client for MysticBBS
 
 !! READ THE README.TXT BEFORE INSTALL !!
 
