@@ -63,6 +63,9 @@ pager_password = ""
 # Override to use another name.
 pager_sysop_name = ""
 
+# poll users for away status. disabled by default to prevent flood kick on large channels
+# set to true on irc channels with +/- 10 users for live away status
+poll_users = False
 
 ###################################################################################################################
 # Ansi settings
