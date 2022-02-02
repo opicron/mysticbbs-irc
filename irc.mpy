@@ -1594,6 +1594,16 @@ def thread_say( s, ):
                                 send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " " + concat(writebuffer.split(),1) + "\x01") ##\x01 or \001
                                 chatbuffer.append( config.mci_action_color + NICK + " " + concat(writebuffer.split(),1) )
 
+                            elif command in ['/NAMES']:
+                                if drawusers == False:
+                                    drawusers = True
+                                else:
+                                    drawusers = False
+
+                                redrawusers = True
+                                redraw = True
+
+
                             elif command in ['/EXIT','/QUIT','/Q']:
                                 stop_threads = True
 
@@ -1907,7 +1917,7 @@ def thread_say( s, ):
                             print_line( get_mci_str( drawline, 62, False ) )
                             writeln( config.mci_default_bg + "|$X63 " )
 
-                        count = count + 1
+                        count += 1
                         
                 #draw user tab
                 if redrawusers == True and drawusers == True and len( DEFUSERS ) > 0:
