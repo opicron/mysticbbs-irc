@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# iCHAT 2.15 (c) opicron 2021-2022
+# iCHAT 2.14 (c) opicron 2021-2022
 #
 # Licence: GPL
 
@@ -65,6 +65,7 @@ if not hasattr(config, 'password'):
     config.password[0] = "iChatGen"
     config.password[1] = "iChatTriv"
 
+if not hasattr(config, 'poll_users'):           config.poll_users           = False
 if not hasattr(config, 'enable_pushover'):      config.enable_pushover      = False
 if not hasattr(config, 'pager_sysop_name'):     config.pager_sysop_name     = ""
 if not hasattr(config, 'pager_host'):           config.pager_host           = ""
