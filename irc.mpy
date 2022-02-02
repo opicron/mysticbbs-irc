@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# iCHAT 2.14 (c) opicron 2021-2022
+# iCHAT 2.15 (c) opicron 2021-2022
 #
 # Licence: GPL
 
@@ -19,7 +19,7 @@
 #
 # - add mci idefault prompt code fg/bg color
 
-DEBUG = False
+DEBUG = True
 
 #------------------------------------------------------------------------------------------------------
 # imports
@@ -1223,12 +1223,20 @@ def thread_listen(s):
                     # end of whois list
                     elif ( command == "318" ):
 
-                        polledusers = polledusers + 1
-                        if polledusers == len( USERS ):
-                            DEFUSERS = USERS
-                            pollusers = True #start count again
-                            redraw = True
-                            redrawusers = True
+                        if config.poll_users == True:
+                            polledusers += 1
+                            if polledusers == len( USERS ):
+                                DEFUSERS = USERS
+                                pollusers = True #start count again
+                                redraw = True
+                                redrawusers = True
+                        #else:
+                        #    DEFUSERS = USERS
+                        #    pollusers = True #start count again
+                        #    redraw = True
+                        #    redrawusers = True
+
+                            
 
                     # away
                     elif ( command == "301" ):
@@ -1291,6 +1299,9 @@ def thread_listen(s):
 
                         if pollusers == True:
                             USERS = []
+                            if config.poll_users == False:
+                                DEFUSERS = []
+
                             NAMES = args.pop( )
 
                             pollusers = False                         
@@ -1305,8 +1316,13 @@ def thread_listen(s):
                                     if tmpname == BOT:
                                         away = True
 
-                                USERS.append( [away, NAME] )
-                                send("WHOIS" + " " + tmpname, True)
+                                if config.poll_users == True:
+                                    USERS.append( [away, NAME] )
+                                    send("WHOIS" + " " + tmpname, True)
+                                else:
+                                    DEFUSERS.append( [away, NAME] )
+                                    redrawusers = True
+                                    drawusers = True
 
                     # part
                     elif ( command == "PART" ): 
@@ -1911,9 +1927,11 @@ def thread_say( s, ):
 
                             write( "|01" + prefix + color + " " + USER[1].replace('_','|08_'+color) + config.mci_clearline )
         
-                    #end of user list
-                    write( mci_adjust_x( config.mci_list_name_xy ) + mci_adjust_y( config.mci_list_name_xy, len( DEFUSERS ) ) )
-                    write( config.mci_list_name_bottom + config.mci_clearline)
+                    #end of user list (only draw if not too many users)
+                    if len( DEFUSERS ) < config.max_chat_lines:
+                        write( mci_adjust_x( config.mci_list_name_xy ) + mci_adjust_y( config.mci_list_name_xy, len( DEFUSERS ) ) )
+                        write( config.mci_list_name_bottom + config.mci_clearline)
+
                     redrawusers = False
 
                     #draw total online users (not away)
@@ -2012,7 +2030,7 @@ if connect("","",True) == True:
     # init paging screen
     if "PAGER" in actions:
         drawpager()
-        write( config.pager_time_startpos + time.strftime("%H:%M", time.gmtime()))
+        write( config.pager_time_startpos + time.strftime("%H:%M", localtime()))
         updatebar( config.pager_bar_startpos, 0, 10, config.pager_bar_length, False)
         writeln( config.pager_connected )                    
 
