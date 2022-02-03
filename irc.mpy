@@ -2041,7 +2041,7 @@ if connect("","",True) == True:
     # init paging screen
     if "PAGER" in actions:
         drawpager()
-        write( config.pager_time_startpos + time.strftime("%H:%M", localtime()))
+        write( config.pager_time_startpos + time.strftime("%H:%M", time.localtime()))
         updatebar( config.pager_bar_startpos, 0, 10, config.pager_bar_length, False)
         writeln( config.pager_connected )                    
 
