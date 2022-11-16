@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
-# iCHAT 2.15 (c) opicron 2021-2022
+# iCHAT 2.20 (c) opicron 2021-2022
 #
 # Licence: GPL
 
 # !!!!TEST WITH HEXCHAT!!!!
 
 # TODO:
+# - privmsg too long jumps screen
+# - tab completion borked
+# - timestamps?
+# - remember privmsgs on away
+# - rework name tab/remove user poll?
+
 # - server switching (if host/port different)
 # - rewrite draw_prompt to take x/y(?)
 #
@@ -26,7 +32,7 @@ DEBUG = True
 #------------------------------------------------------------------------------------------------------
 
 
-import re, os, sys, time, socket, traceback, threading #, ssl
+import re, os, sys, time, socket, traceback, threading, ssl
 
 from threading import Thread
 from mystic_bbs import *               
@@ -64,6 +70,11 @@ if not hasattr(config, 'password'):
     config.password = [0 for i in range(config.max_servers)]
     config.password[0] = "iChatGen"
     config.password[1] = "iChatTriv"
+if not hasattr(config, 'ssl'): 
+    config.ssl = [0 for i in range(config.max_servers)]
+    config.ssl[0] = False
+    config.ssl[1] = False
+
 
 if not hasattr(config, 'poll_users'):           config.poll_users           = False
 if not hasattr(config, 'enable_pushover'):      config.enable_pushover      = False
@@ -71,6 +82,7 @@ if not hasattr(config, 'pager_sysop_name'):     config.pager_sysop_name     = ""
 if not hasattr(config, 'pager_host'):           config.pager_host           = ""
 if not hasattr(config, 'pager_port'):           config.pager_port           = 6667
 if not hasattr(config, 'pager_channel'):        config.pager_channel        = ""
+if not hasattr(config, 'pager_ssl'):            config.pager_channel        = False
 if not hasattr(config, 'pager_password'):       config.pager_password       = ""
 if not hasattr(config, 'mci_clearscr'):         config.mci_clearscr         = '|07|16|CL'
 if not hasattr(config, 'filename_pager'):       config.filename_pager       = 'pager.ans'
@@ -939,13 +951,23 @@ def find_between( s, first, last ):
 #------------------------------------------------------------------------------
 def connect( channel="", password="", first=True ):
 
-    global s, HOST, PORT, NICK, CHANNEL, PASSWORD, drawhdr, user
+    global s, SSL, HOST, PORT, NICK, CHANNEL, PASSWORD, drawhdr, user
 
     if first:
-        s = socket.socket( )
+        sock = socket.socket( )
 
+        if SSL:
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            #context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            context.verify_mode = ssl.CERT_NONE
+            
         try:
-            s.connect( ( HOST, PORT ) )
+            sock.connect( ( HOST, PORT ) )
+            if SSL:
+                s = context.wrap_socket(sock)
+            else:   
+                s = sock
 
         except Exception as e: 
             writeln( "Exception: %s" % ( e ) )
@@ -954,6 +976,8 @@ def connect( channel="", password="", first=True ):
             return False
 
         s.settimeout( 1 )
+        #socket.setdefaulttimeout(15 * 60)
+
         #s.send( "PASS xxx\n" ) # only if authentication is required.    
 
         username = user['handle'].translate(None, ' ')
@@ -1321,6 +1345,7 @@ def thread_listen(s):
                                     USERS.append( [away, NAME] )
                                     send("WHOIS" + " " + tmpname, True)
                                 else:
+                                    USERS.append( [away, NAME] ) #because, well im a idiot, and tab completion wants USERS (it initializes earlier than DEFUSERS)
                                     DEFUSERS.append( [away, NAME] )
                                     redrawusers = True
                                     drawusers = True
@@ -1428,7 +1453,17 @@ def thread_listen(s):
                 # shutdown 
                 if stop_threads or shutdown():                        
                     sys.exit( )
-    
+
+            # SSLerror timeout
+            except ssl.SSLError as ssl_error:
+            #except Exception, e:
+
+                if stop_threads or shutdown():                        
+                    sys.exit( )
+
+                #print "Exception {0} occurred".format(e)
+                #continue
+
     # catch all errors
     except Exception as e:   
         msg = "Listen thread exception: %s" % ( str( traceback.format_exc() ) )
@@ -2002,10 +2037,12 @@ if "PAGER" in actions:
         
     HOST = config.pager_host
     PORT = config.pager_port
+    SSL = config.pager_ssl
 else:
     #set public/interbbs channel settings z
     HOST = config.host[config.server_id] 
     PORT = config.port[config.server_id] 
+    SSL = config.ssl[config.server_id] 
 
 #------------------------------------------------------------------------------------------------------
 # init pushover 
