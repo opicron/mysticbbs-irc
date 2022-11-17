@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# iCHAT 2.20 (c) opicron 2021-2022
+# iCHAT 2.15 (c) opicron 2021-2022
 #
 # Licence: GPL
 
@@ -32,7 +32,11 @@ DEBUG = True
 #------------------------------------------------------------------------------------------------------
 
 
-import re, os, sys, time, socket, traceback, threading, ssl
+import re, os, sys, time, socket, traceback, threading
+try:
+    import ssl
+except:
+    pass
 
 from threading import Thread
 from mystic_bbs import *               
