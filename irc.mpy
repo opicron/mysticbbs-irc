@@ -999,18 +999,23 @@ def connect( channel="", password="", first=True ):
             password = config.password[config.server_id]
     
     s.send( "NICK %s\n" % NICK ) 
-    if (len(password) == 0):
-        s.send( "JOIN " + channel + "\r\n" )
-    else:
-        s.send( "JOIN " + channel + " " + password + "\r\n" )
 
     CHANNEL = channel
     PASSWORD = password
 
-    setpinfo(8, config.mci_join_color )
-    setpinfo(9, config.mci_join_color )
+    # do not join channel immediately, let the listen thread wait for MODT command
+    if not first:
 
-    drawhdr = True
+        if (len(password) == 0):
+            s.send( "JOIN " + channel + "\r\n" )
+        else:
+            s.send( "JOIN " + channel + " " + password + "\r\n" )
+
+        setpinfo(8, config.mci_join_color )
+        setpinfo(9, config.mci_join_color )
+
+        drawhdr = True
+
     return True
 #------------------------------------------------------------------------------
 
@@ -1432,6 +1437,11 @@ def thread_listen(s):
                         MODT = args.pop( )
                         say('', config.mci_action_color + MODT[2:], config.mci_default_fg)
                         redraw = True
+
+                    #end of modt
+                    elif ( command == "376" or command == "004"): 
+                        #join channel
+                        connect( CHANNEL, PASSWORD, False )
                     
                     # topic
                     elif ( command == "332" ):                                                        
@@ -1774,15 +1784,22 @@ def thread_say( s, ):
                         else:
                             draw_prompt( False, False, True )
 
-                    elif key == KEY_PGUP and extended == True:                    
-                        if (len( chatbuffer ) - config.max_chat_lines) > chatbufferpos:
-                            chatbufferpos = chatbufferpos + 1
-                            redraw = True
+                    elif key == KEY_PGUP and extended == True:
+                        if draw_irc == True:
+                            if (len( ircbuffer ) - config.max_chat_lines) > chatbufferpos:
+                                chatbufferpos = chatbufferpos + 1
+                        
+                        else:                    
+                            if (len( chatbuffer ) - config.max_chat_lines) > chatbufferpos:
+                                chatbufferpos = chatbufferpos + 1
+                        
+                        redraw = True
 
                     elif key == KEY_PGDN and extended == True:
                         if chatbufferpos > 0:
                             chatbufferpos = chatbufferpos - 1
-                            redraw = True
+                        
+                        redraw = True
 
                     elif key == KEY_HOME and extended == True:
                         writebufferpos = 0
@@ -1838,6 +1855,7 @@ def thread_say( s, ):
                             else:
                                 write( "|$X63 " )
 
+                        chatbufferpos = 0
                         redraw = True
 
                     # stop threads on escape
@@ -1925,7 +1943,7 @@ def thread_say( s, ):
                     count = 0
 
                     if len(ircbuffer) > config.max_chat_lines:
-                        startpos = len(ircbuffer) - config.max_chat_lines
+                        startpos = len(ircbuffer) - config.max_chat_lines - chatbufferpos
 
                     while count < config.max_chat_lines and count < len(ircbuffer):
                         if drawusers == False or count > len(USERS): 
