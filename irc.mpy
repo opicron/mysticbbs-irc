@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
-# iCHAT 2.15 (c) opicron 2021-2022
+# iCHAT 2.20 (c) opicron 2021-2022
 #
 # Licence: GPL
 
-# !!!!TEST WITH HEXCHAT!!!!
-
-# TODO:
+#TODO:
+# - check user on ban
+# - check why /NAMES is continuesly being polled! better use join/part/kick/ban/quits!
+# - split connect and join command
 # - privmsg too long jumps screen
-# - tab completion borked
 # - timestamps?
 # - remember privmsgs on away
-# - rework name tab/remove user poll?
-
-# - server switching (if host/port different)
+# - [wont implement] server switching (if host/port different)
 # - rewrite draw_prompt to take x/y(?)
 #
 # - use draw_prompt to draw chatbuffer too
@@ -55,13 +53,13 @@ import config
 # make sure default settings are loaded
 if not hasattr(config, 'max_chat_lines'):   config.max_chat_lines   = 18
 if not hasattr(config, 'max_nick_len'):     config.max_nick_len     = 13
-if not hasattr(config, 'server_id'):        config.server_id        = 1
+if not hasattr(config, 'server_id'):        config.server_id        = 0
 if not hasattr(config, 'max_servers'):      config.max_servers      = 10
 
 if not hasattr(config, 'host'):     
     config.host= [0 for i in range(config.max_servers)]
     config.host[0] = "irc.opicron.eu"
-    host[1] = "irc.opicron.eu"
+    config.host[1] = "irc.opicron.eu"
 if not hasattr(config, 'port'): 
     config.port = [0 for i in range(config.max_servers)]
     config.port[0] = 6667
@@ -78,10 +76,13 @@ if not hasattr(config, 'ssl'):
     config.ssl = [0 for i in range(config.max_servers)]
     config.ssl[0] = False
     config.ssl[1] = False
+if not hasattr(config, 'srvpass'): 
+    config.srvpass = [0 for i in range(config.max_servers)]
+    config.srvpass[0] = "" 
+    config.srvpass[1] = ""
 
 
-if not hasattr(config, 'poll_users'):           config.poll_users           = False
-if not hasattr(config, 'enable_pushover'):      config.enable_pushover      = False
+if not hasattr(config, 'poll_users'):           config.poll_users           = True
 if not hasattr(config, 'pager_sysop_name'):     config.pager_sysop_name     = ""
 if not hasattr(config, 'pager_host'):           config.pager_host           = ""
 if not hasattr(config, 'pager_port'):           config.pager_port           = 6667
@@ -129,8 +130,6 @@ if not hasattr(config, 'pager_time_startpos'):  config.pager_time_startpos  = '|
 if not hasattr(config, 'pager_connected'):      config.pager_connected      = '|[X10|[Y15|15status |08[|10connected|08]'
 if not hasattr(config, 'forced_exit_notice'):   config.forced_exit_notice   = "|[Y24|[X02|14press any key to exit..|[K|PN"
 if not hasattr(config, 'uppercase_first_key'):  config.uppercase_first_key  = False
-if not hasattr(config, 'user_polltime'):        config.user_polltime        = 200
-if not hasattr(config, 'sysop_polltime'):       config.sysop_polltime       = 100
 if not hasattr(config, 'poll_timeout'):         config.poll_timeout         = 250
 
 if not hasattr(config, 'mci_list_name_away_color'):     config.mci_list_name_away_color     = "|08"
@@ -139,13 +138,6 @@ if not hasattr(config, 'mci_list_name_xy'):             config.mci_list_name_xy 
 if not hasattr(config, 'mci_list_name_top_char'):       config.mci_list_name_top_char       = ":"
 if not hasattr(config, 'mci_list_name_middle_char'):    config.mci_list_name_middle_char    = "|"
 if not hasattr(config, 'mci_list_name_bottom'):         config.mci_list_name_bottom         = "|01`--------------'"
-
-#------------------------------------------------------------------------------------------------------
-#import pager module
-#------------------------------------------------------------------------------------------------------
-
-if config.enable_pushover:
-    import pushover
 
 #------------------------------------------------------------------------------------------------------
 # key defines
@@ -186,8 +178,9 @@ pollusers	    = False
 chatbuffer      = []
 ircbuffer       = []
 USERS           = []
-DEFUSERS        = []
+AUTOJOINS       = []
 actions         = []
+JOINCHANNEL     = ""
 
 
 ###################################################################################################################
@@ -982,14 +975,14 @@ def connect( channel="", password="", first=True ):
             return False
 
         s.settimeout( 1 )
-        #socket.setdefaulttimeout(15 * 60)
-
-        #s.send( "PASS xxx\n" ) # only if authentication is required.    
 
         username = user['handle'].translate(None, ' ')
 
+        if not config.srvpass[config.server_id] == "":
+            s.send( "PASS " + config.srvpass[config.server_id] + "\r\n" ) # only if authentication is required.    
+
         s.send( "USER %s %s %s :%s\r\n" % (username, '-', '-', username + '@' + cfg['bbsname']) ) 
-    
+
     if len( channel ) == 0:
         if "PAGER" in actions:
             channel = config.pager_channel
@@ -1092,6 +1085,21 @@ def draw_prompt( onlylastchar=False, removechar=False, posonly=False ):
     
 #-----------------------------------------------------------------------------------------------------
 
+def updateusers( NAME ):
+    global USERS, redrawusers
+
+    #TODO: remove user from USERS and DEFUSERS
+    removeitem = -1
+    if len( USERS ) > 0:
+        for i, USER in enumerate(USERS):
+            tmpname = USER[1].translate(None,'%@+')
+            if NAME == tmpname:
+                removeitem = i
+
+    if removeitem > -1:
+        USERS.remove(USERS[removeitem])
+        redrawusers = True
+
 
 ###################################################################################################################
 # Listen thread
@@ -1099,7 +1107,7 @@ def draw_prompt( onlylastchar=False, removechar=False, posonly=False ):
 
 def thread_listen(s):
     try:
-        global error_halt, stop_threads, start_chat, chatbuffer, ircbuffer, redraw, drawhdr, NICK, USERS, redrawusers, DEFUSERS, pollusers, CHANNEL, PRVMSGUSER, DESTPRVUSER, DEBUG #, stop_page 
+        global error_halt, stop_threads, start_chat, chatbuffer, ircbuffer, redraw, drawhdr, NICK, USERS, redrawusers, pollusers, JOINCHANNEL, CHANNEL, AUTOJOINS, PRVMSGUSER, DESTPRVUSER, DEBUG #, stop_page 
 
         data = ''
         buf = ''
@@ -1108,7 +1116,6 @@ def thread_listen(s):
         PRVMSGUSER = None
 
         sysop_left  = False
-        polledusers = 0
 
         while not shutdown() and not stop_threads:
             
@@ -1177,14 +1184,21 @@ def thread_listen(s):
                     # wrong password
                     elif ( command == "475" ):
                         MSG = args.pop( )
+                        destchan = args.pop( )
                         chatbuffer.append( config.mci_notice + MSG )
-                        CHANNEL = ""
-                    
+
+                        #if this is the target join channel and we cannot join remove channel validation
+                        if destchan.upper() == CHANNEL.upper():
+                            CHANNEL = "" 
+                        
+                        redraw = True
+
                     # no such channel
                     elif ( command == "403" ):
                         MSG = args.pop( )
-                        chatbuffer.append( config.mci_notice + MSG + ': ' + CHANNEL )
-                        CHANNEL = ""
+                        destchannel = args.pop( )
+                        chatbuffer.append( config.mci_notice + MSG + ': ' + destchannel )
+                        #CHANNEL = "" #why would we reset channel?!
 
                     # not in channel
                     elif ( command == "442" ):
@@ -1257,23 +1271,8 @@ def thread_listen(s):
                         redraw = True
 
                     # end of whois list
-                    elif ( command == "318" ):
-
-                        if config.poll_users == True:
-                            polledusers += 1
-                            if polledusers == len( USERS ):
-                                DEFUSERS = USERS
-                                pollusers = True #start count again
-                                redraw = True
-                                redrawusers = True
-                        #else:
-                        #    DEFUSERS = USERS
-                        #    pollusers = True #start count again
-                        #    redraw = True
-                        #    redrawusers = True
-
-                            
-
+                    #elif ( command == "318" ):
+   
                     # away
                     elif ( command == "301" ):
                         match = args.pop( 1 )
@@ -1290,7 +1289,7 @@ def thread_listen(s):
                                     if "PAGER" in actions:
                                         if sysop_left == False:
                                             # avoid false positive
-                                            if len( DEFUSERS ) > 0:
+                                            if len( USERS ) > 0:
                                                 chatbuffer.append( config.mci_default_bg + config.mci_action_color + SYSOP + " left the chat, feel free to exit :P" )
                                                 redraw = True
                                                 sysop_left = True
@@ -1300,11 +1299,10 @@ def thread_listen(s):
                     # away / back
                     elif ( command == "305" ):
 
-                        for i, USER in enumerate( DEFUSERS ):
-                            if USER[1] == NICK:
+                        for i, USER in enumerate( USERS ):
+                            if USER[1].translate(None,'%@+') == NICK:
                                 if USER[0] == True:
-
-                                    DEFUSERS[i][0] = False
+                                    USERS[i][0] = False
                                     redrawusers = True
 
                         text = args.pop( ) 
@@ -1313,36 +1311,70 @@ def thread_listen(s):
 
                     elif ( command == "306" ):
 
-                        for i, USER in enumerate( DEFUSERS ):
-                            if USER[1] == NICK:
+                        for i, USER in enumerate( USERS ):
+                            if USER[1].translate(None,'%@+') == NICK:
                                 if USER[0] == False:
-
-                                    DEFUSERS[i][0] = True
+                                    USERS[i][0] = True
                                     redrawusers = True
 
                         text = args.pop( ) 
                         chatbuffer.append( config.mci_join_color + text )
                         redraw = True       
 
+                    #ison response
+                    #elif ( command == "303" ):
+                    #    names = args.pop( ).split( )
+
+                    #    if len( USERS ) > 0:
+                    #        for i, USER in enumerate(USERS):
+                    #            found = False
+                    #            for name in names:
+                    #                if USER[1].translate(None,'%@+') == name:
+                    #                    found = True
+                    #                    index = i
+                                
+                    #            if not found:
+                    #                USERS[i][0] = True
+
+                    #        redrawusers = True
+
+                    #who list entry
+                    elif ( command == "352" ):
+                        #<channel> <user> <host> <server> <nick> <H|G>[*][@|+] :<hopcount> <real name>
+                        nick = args[5]
+                        status = args[6]
+
+                        if len( USERS ) > 0:
+                            for i, USER in enumerate(USERS):
+                                if nick == USER[1].translate(None,'%@+') and nick not in config.mci_bot_names:
+                                    if status.find("G") > -1:
+                                        USERS[i][0] = True
+                                    else:
+                                        USERS[i][0] = False
+                        
+                    #end of who list
+                    elif ( command == "315" ):
+                        redrawusers = True
+                        redraw = True
+
                     # RPL_ISON from NAMES
                     elif ( command == "353" ):
+
                         # is this always the case?
                         if CHANNEL <> args[2]:
-                            CHANNEL = args[2]
-                            setpinfo( 8, CHANNEL )
-                            drawhdr = True
-                            redraw = True
+                            # only accept channel if destination channel is same
+                            if CHANNEL.upper() == args[2].upper():
+                                CHANNEL = args[2]
+                                setpinfo( 8, CHANNEL )
+                                drawhdr = True
+                                redraw = True
 
-                        if pollusers == True:
+                        #znc pushes channels, thus this and previous logic was necesarry
+                        if CHANNEL == args[2]:
+
                             USERS = []
-                            if config.poll_users == False:
-                                DEFUSERS = []
-
                             NAMES = args.pop( )
 
-                            pollusers = False                         
-                            polledusers = 0
-                            
                             for NAME in NAMES.split( ):
                                 tmpname = NAME.translate(None,'%@+')
                                 away = False
@@ -1352,37 +1384,54 @@ def thread_listen(s):
                                     if tmpname == BOT:
                                         away = True
 
-                                if config.poll_users == True:
-                                    USERS.append( [away, NAME] )
-                                    send("WHOIS" + " " + tmpname, True)
-                                else:
-                                    USERS.append( [away, NAME] ) #because, well im a idiot, and tab completion wants USERS (it initializes earlier than DEFUSERS)
-                                    DEFUSERS.append( [away, NAME] )
-                                    redrawusers = True
-                                    drawusers = True
+                                USERS.append( [away, NAME] )
+                                
+                            redrawusers = True
+                            redraw = True
 
                     # part
                     elif ( command == "PART" ): 
+
+                        updateusers( FROM )
+
                         chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " left " + args.pop( 0 ) )
                         redraw = True
 
                     # join                   
-                    elif ( command == "JOIN" ):                           
-                        USERS.append( [False, FROM ])
-                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " joined " + CHANNEL )
-                        redraw = True
+                    elif ( command == "JOIN" ):                 
 
-                    #MODE
-                    #elif ( command == "MODE"):
-                    #already polling automatic
-                    #    s.send("NAMES" + " " + CHANNEL + "\n")
-                    #    pollcount = 1
+                        # JOINCHANNEL is set by the /join command, check if we actually connect and set new CHANNEL likewise
+                        joinchannel = args.pop( 0 )
+                        if JOINCHANNEL.upper() == joinchannel.upper():
+                            CHANNEL = joinchannel
+                            JOINCHANNEL = ""
+
+                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " joined " + joinchannel )
+
+                        #save join information    
+                        AUTOJOINS.append(joinchannel)
+
+                        #set channel update screens
+                        if joinchannel.upper() == CHANNEL.upper():
+                            setpinfo( 8, CHANNEL ) 
+                            USERS.append( [False, FROM ]) 
+                            redraw = True
+                            drawhdr = True
+                            #redrawusers = True
+                            #redrawusers = True
                         
+                    #MODE
+                    elif ( command == "MODE"):
+                        # we could update the name list ourself, but lazy so we will request names again
+                        send("NAMES" + " " + CHANNEL + "\n")
+                                               
                     # kick             
                     elif ( command == "KICK" ):
-                        WHO = args.pop( 1 ) 
 
-                        if WHO.find( NICK ) > -1:
+                        WHO = args.pop( 1 ) 
+                        updateusers( WHO )
+
+                        if WHO == NICK:
                             chatbuffer.append( config.mci_error + "Kicked by " + args.pop( 1 ) )
                             error_halt = True
                         else:
@@ -1399,6 +1448,7 @@ def thread_listen(s):
                         chatbuffer.append( config.mci_join_color + "Reconnecting with alternate nickname" )
                         NICK = "_" + NICK
                         connect( "", "", False )
+                        redraw = True
 
                     # nick in use
                     elif ( command == "433" ):
@@ -1406,21 +1456,18 @@ def thread_listen(s):
                         chatbuffer.append( config.mci_join_color + "Reconnecting with alternate nickname" )
                         NICK = NICK + "_" 
                         connect( "", "", False )
+                        redraw = True
 
                     # quit
                     elif ( command == "QUIT" or line[ 1 ] == "PART"):                          
-                        removeitem = -1
-                        if len( USERS ) > 0:
-                            for i, USER in enumerate(USERS):
-                                tmpname = USER[1].translate(None,'%@+')
-                                if FROM == tmpname:
-                                    removeitem = i
 
-                        if removeitem > -1:
-                            # remove away status
-                            USERS.remove(USERS[removeitem])
+                        leavemethod = "left"
+                        if (command == "QUIT"):
+                             leavemethod = "quit"
 
-                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " " + args.pop( ) )
+                        updateusers( FROM )
+
+                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " " + leavemethod + " " + args.pop( ) )
                         redraw = True
                         redrawusers = True
 
@@ -1444,19 +1491,16 @@ def thread_listen(s):
                         connect( CHANNEL, PASSWORD, False )
                     
                     # topic
-                    elif ( command == "332" ):                                                        
-                        setpinfo( 8, CHANNEL )
-                        setpinfo( 9, args.pop( ) ) #modt
-                        drawhdr = True
-                        
-                        #start polling users for this channel
-                        pollusers = True 
-                    
+                    elif ( command == "332" ):
+                        if CHANNEL.upper() == args[1].upper():
+                            setpinfo( 9, args.pop( ) ) #modt
+                            drawhdr = True
+                                            
                     # new topic
                     elif ( command == "TOPIC" ): 
 
                         TOPIC = args.pop( )
-                        setpinfo( 8, CHANNEL )
+                        #setpinfo( 8, CHANNEL )
                         setpinfo( 9, TOPIC ) #modt
                         drawhdr = True
 
@@ -1506,8 +1550,6 @@ def thread_page(s,):
     pagecount       = 300
     count           = 0
     oldpos          = -1
-    #drawprompt      = True
-    pushover_count  = 0
     
     #------------------------------------------------------------------------------------------------------
     # page loop
@@ -1526,23 +1568,8 @@ def thread_page(s,):
 
         time.sleep( 0.1 )
 
-        # send pushover message if not stop paging
-        if (pushover_count == 0 or count == 20 or count == 100): # and stop_page == False:
-            
-            if config.enable_pushover == True:
-
-                try:                    
-                    push.send_message( NICK + " paging IRC", sound = "pushover", url = "irc://" + HOST + "/" + CHANNEL )
-                    
-                except SomeError:
-                    writeln( "pushover failed" )
-
-            pushover_count = pushover_count + 1
-
         # send irc message
         if (count == 10 or count == 30 or count == 50 or count == 100): # and stop_page == False:
-
-            #s.send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + SYSOP + "\n")
             send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + config.pager_sysop_name)
 
         # check key input for abort
@@ -1574,7 +1601,7 @@ def thread_page(s,):
 
 def thread_say( s, ):
 
-    global stop_threads, chatbuffer, redraw, drawhdr, USERS, drawusers, draw_irc, redrawusers, DEFUSERS, pollusers, CHANNEL, PASSWORD, PRVMSGUSER, DESTPRVUSER, writebufferpos, writebuffer, ircbuffer
+    global stop_threads, chatbuffer, redraw, drawhdr, USERS, drawusers, draw_irc, redrawusers, JOINCHANNEL, pollusers, CHANNEL, PASSWORD, PRVMSGUSER, DESTPRVUSER, writebufferpos, writebuffer, ircbuffer
 
     writebuffer = ''
 
@@ -1588,12 +1615,14 @@ def thread_say( s, ):
 
     redrawusers = False
     draw_irc = False
-    pollcount = 0
+    pollcount = config.poll_timeout - 60
+    if pollcount < 0: 
+        pollcount = 0
 
     if "PAGER" in actions:
         menucmd('NA','Chatting with Sysop')
     else:
-        menucmd('NA','chatting in iCHAT')
+        menucmd('NA','Messaging on IRC')
     
     try:
         while stop_threads == False and not shutdown():
@@ -1614,21 +1643,22 @@ def thread_say( s, ):
                 if pollcount % 4 == 0: # always check for response
                     if len(writebuffer) == 0:
                         DESTPRVUSER = None
-                    elif writebuffer.upper().find('/R') == 0:
+                    elif writebuffer.upper().find('/R') == 0 and len(writebuffer) < 3: #TODO: check
                         DESTPRVUSER = PRVMSGUSER
-
+                
                 if pollcount > config.poll_timeout:
-                    pollusers = True
+                    if config.poll_users == True:
 
-                if pollusers == True:
-                    if pollcount == 1:
-                        send( "NAMES " + CHANNEL, True ) # send IRC ISON request, to make sure away status is removed
-                    if "PAGER" in actions:
-                        if pollcount > config.sysop_polltime:
-                            pollcount = 0
-                    else:
-                        if pollcount > config.user_polltime:
-                            pollcount = 0
+                        names = ""
+                        for NAME in USERS:
+                            name = NAME[1].translate(None,'%@+')
+                            names = names + name + " "
+                        
+                        send( "WHO " + CHANNEL + "\r\n" )
+
+                    pollcount = 0
+                    pollusers = False
+
             else:
                 key, extended = getkey( )
                 if len(key) > 0:
@@ -1658,22 +1688,60 @@ def thread_say( s, ):
                             elif command in ['/EXIT','/QUIT','/Q']:
                                 stop_threads = True
 
+                            elif command in ['/PART','/P']:
+                                try:
+                                    AUTOJOINS.remove(CHANNEL)
+                                    setpinfo(8,"|08not in channel")
+                                    setpinfo(9,"|08no topic")
+                                    send("PART " + CHANNEL)
+                                    CHANNEL = ""
+                                    USERS = []
+                                    redraw = True
+                                    drawhdr = True
+                                    redrawusers = True
+                                except ValueError:
+                                    pass  # do nothing!                                    
+                                
                             elif command in ['/CHANNEL','/J','/JOIN']:
+
                                 if not "PAGER" in actions: #dont allow switch channel during pager chat
                                     lines = writebuffer.split()
                                     if len(lines)>1:
-                                        send("PART " + CHANNEL)
-                                
+
                                         channel = lines[1]
-                                        if channel[0:1] <> '#':
-                                            channel = '#' + channel
 
-                                        if len(lines)>2:
-                                            password = lines[2]
-                                        else:
-                                            password = ""
+                                        found = False
+                                        for AUTOJOIN in AUTOJOINS:
+                                            if AUTOJOIN.upper() == channel.upper():
+                                                found = True
+                                                CHANNEL = AUTOJOIN
+                                                setpinfo( 8, CHANNEL ) #TODO:only set pinfo if name = user
+                                                setpinfo( 9, "|08awaiting topic" )
 
-                                        connect( channel, password, False )
+                                                USERS = []
+                                                send("NAMES" + " " + CHANNEL + "\n")
+                                                send("TOPIC" + " " + CHANNEL + "\n")
+
+                                                drawhdr = True
+                                                chatbuffer.append( config.mci_default_bg + config.mci_join_color + NICK + " switched to " + CHANNEL )
+                                                
+                                        
+                                        if not found:
+                                            if channel[0:1] <> '#':
+                                                channel = '#' + channel
+
+                                            if len(lines)>2:
+                                                password = lines[2]
+                                            else:
+                                                password = ""
+
+                                            if (len(password) == 0):
+                                                send( "JOIN " + channel + "\r\n", True)
+                                            else:
+                                                send( "JOIN " + channel + " " + password + "\r\n", True )
+
+                                            JOINCHANNEL = channel
+                                            
                                         redraw = True
 
                             elif command in ['/HELP','/H']:
@@ -1685,9 +1753,9 @@ def thread_say( s, ):
                                 redrawusers = True
 
                             elif command == '/AWAY':
-                                for i, USER in enumerate( DEFUSERS ):
-                                    if USER[1] == NICK:
-                                        if USER[0] == False:
+                                #for i, USER in enumerate( DEFUSERS ):
+                                #    if USER[1] == NICK:
+                                #        if USER[0] == False:
 
                                             if len( writebuffer ) == 5:
                                                 writebuffer = "/AWAY Away!"
@@ -1696,9 +1764,9 @@ def thread_say( s, ):
                                             send("AWAY " + " :" + concat(lines,1) + "\n")
 
                             elif command == '/BACK':
-                                for i, USER in enumerate( DEFUSERS ):
-                                    if USER[1] == NICK:
-                                        if USER[0] == True:
+                                #for i, USER in enumerate( DEFUSERS ):
+                                #    if USER[1] == NICK:
+                                #        if USER[0] == True:
 
                                             send("AWAY " + " :\r\n")
 
@@ -1860,7 +1928,9 @@ def thread_say( s, ):
 
                     # stop threads on escape
                     elif key == KEY_ESCAPE and extended == False:
+                        
                         if writebuffer[writebufferpos-2:writebufferpos] <> '@[': #avoid exit on insert key (netrunner beta 20)
+                            send("QUIT :client closed iChat")
                             stop_threads = True
 
                     # autocomplete names
@@ -1946,7 +2016,7 @@ def thread_say( s, ):
                         startpos = len(ircbuffer) - config.max_chat_lines - chatbufferpos
 
                     while count < config.max_chat_lines and count < len(ircbuffer):
-                        if drawusers == False or count > len(USERS): 
+                        if drawusers == False or count > len(USERS) or CHANNEL == "": #drawusers = False: 
                             writeln( config.mci_chat_line_x + ircbuffer[startpos + count][:77] + config.mci_clearline )
                         else:
                             writeln( config.mci_chat_line_x + ircbuffer[startpos + count][:62] + "|$X63 " )
@@ -1967,7 +2037,7 @@ def thread_say( s, ):
                         if count < len( chatbuffer ):
                             drawline = chatbuffer[ startpos + count ]
 
-                        if drawusers == False or count > len(DEFUSERS):
+                        if drawusers == False or count > len(USERS) or CHANNEL == "":
                             write( config.mci_chat_line_x )
                             print_line( drawline )
                             writeln( config.mci_clearline )
@@ -1979,9 +2049,10 @@ def thread_say( s, ):
                         count += 1
                         
                 #draw user tab
-                if redrawusers == True and drawusers == True and len( DEFUSERS ) > 0:
+                if redrawusers == True and drawusers == True and len( USERS ) > 0:
                     online = 0
-                    for i, USER in enumerate( DEFUSERS ):
+                    
+                    for i, USER in enumerate( USERS ):
                         if i < config.max_chat_lines:
                             prefix = config.mci_list_name_middle_char
                             if i == 0:
@@ -1995,11 +2066,11 @@ def thread_say( s, ):
                                 color = config.mci_list_name_color
                                 online += 1
 
-                            write( "|01" + prefix + color + " " + USER[1].replace('_','|08_'+color) + config.mci_clearline )
+                            write( "|01" + prefix + color + " " + USER[1].replace('_','|08_'+color) + config.mci_clearline)
         
                     #end of user list (only draw if not too many users)
-                    if len( DEFUSERS ) < config.max_chat_lines:
-                        write( mci_adjust_x( config.mci_list_name_xy ) + mci_adjust_y( config.mci_list_name_xy, len( DEFUSERS ) ) )
+                    if len( USERS ) < config.max_chat_lines:
+                        write( mci_adjust_x( config.mci_list_name_xy ) + mci_adjust_y( config.mci_list_name_xy, len( USERS ) ) )
                         write( config.mci_list_name_bottom + config.mci_clearline)
 
                     redrawusers = False
@@ -2067,13 +2138,6 @@ else:
     HOST = config.host[config.server_id] 
     PORT = config.port[config.server_id] 
     SSL = config.ssl[config.server_id] 
-
-#------------------------------------------------------------------------------------------------------
-# init pushover 
-#------------------------------------------------------------------------------------------------------
-
-if config.enable_pushover:
-    push = pushover.PushoverClient( SCRIPTDIR + "pushover.config")
 
 #------------------------------------------------------------------------------------------------------
 # adjust nickname
