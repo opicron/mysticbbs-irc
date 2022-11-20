@@ -1,6 +1,6 @@
 
 ======================================================================================================
-## iCHAT v2.15 - open source MysticBBS IRC client 2021-2022
+## iCHAT v2.20 - open source MysticBBS IRC client 2021-2022
 ======================================================================================================
 
 https://github.com/opicron/mysticbbs-irc
@@ -19,6 +19,18 @@ For questions, private channels or operator status contact me:
 ======================================================================================================
 ## Changelog
 ======================================================================================================
+v2.20
+- [ADD] SSL support
+- check user on kick/part/quit/join/ban
+- [FIX] part channel/quit app in correctly
+- [FIX] reworked away status poll, no more flood kicks
+- [ADD] remember joined channels
+- [ADD] easily switch between joined channels
+- [ADD] ZNC support (server pass, autojoins)
+- [FIX] user name code cleanup
+- [FIX] tab completion
+- [ADD] remember user name when writing /R reply privmsgs
+
 v2.15
 - [ADD] /NAMES command to toggle name tab
 - [FIX] dont draw footer is nametab too long
