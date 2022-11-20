@@ -21,13 +21,14 @@ For questions, private channels or operator status contact me:
 ======================================================================================================
 v2.20
 - [ADD] SSL support
-- check user on kick/part/quit/join/ban
+- [ADD] check user on kick/part/quit/join/ban
+- [FIX] removed pushover
 - [FIX] part channel/quit app in correctly
 - [FIX] reworked away status poll, no more flood kicks
 - [ADD] remember joined channels
 - [ADD] easily switch between joined channels
 - [ADD] ZNC support (server pass, autojoins)
-- [FIX] user name code cleanup
+- [FIX] user name tab code cleanup
 - [FIX] tab completion
 - [ADD] remember user name when writing /R reply privmsgs
 
