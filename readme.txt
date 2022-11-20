@@ -20,6 +20,7 @@ For questions, private channels or operator status contact me:
 ## Changelog
 ======================================================================================================
 v2.20
+- [!!!] NEW CONFIG FILE REQUIRED (lots of config changes)
 - [ADD] SSL support
 - [ADD] check user on kick/part/quit/join/ban
 - [FIX] removed pushover
