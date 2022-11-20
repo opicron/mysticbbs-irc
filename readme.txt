@@ -34,7 +34,7 @@ v2.20
 
 v2.15
 - [ADD] /NAMES command to toggle name tab
-- [FIX] dont draw footer is nametab too long
+- [FIX] dont draw footer if nametab too long
 - [FIX] show correct localtime in pagers
 - [ADD] option to poll away status of users (set to False by default to prevent flood kick)
         enable this option on irc channel with +/- 10 users to show live away status
