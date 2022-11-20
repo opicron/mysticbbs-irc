@@ -19,34 +19,33 @@ max_servers = 10
 host = [0 for i in range(max_servers)]
 port = [0 for i in range(max_servers)]
 channel = [0 for i in range(max_servers)]
+srvpass = [0 for i in range(max_servers)]
 password = [0 for i in range(max_servers)]
 ssl = [0 for i in range(max_servers)]
 
-# server #0 - make sure to use the number in the brackets [x]
-host     [0] = "slackers.ddns.net"
-port     [0] = 7000
-channel  [0] = "#slackers"
-password [0] = ""
-ssl      [0] = False
+# server #2 - make sure to use the number in the brackets [x]
+host     [2] = "irc.opicron.eu"
+port     [2] = 6697
+channel  [2] = "#General"
+srvpass  [2] = ""
+password [2] = "iChatGen"
+ssl      [2] = True
 
 # server #1 - make sure to use the number in the brackets [x]
 host     [1] = "irc.opicron.eu"
-port     [1] = 6667
+port     [1] = 6697
 channel  [1] = "#Trivia"
+srvpass  [1] = ""
 password [1] = "iChatTriv"
-ssl      [1] = False
+ssl      [1] = True
 
-# server #2 - make sure to use the number in the brackets [x]
-host     [2] = "irc.opicron.eu"
-port     [2] = 6667
-channel  [2] = "#General"
-password [2] = "iChatGen"
-ssl      [2] = False
-
-# To use paging functionality you need the python [request] module (for pushover API)
-# by default this is disabled because not all python installations have this module enabled
-# Also it is possible to notify pages by ZNC bouncer too. Igloo IRC for iPhone supports this.
-enable_pushover = False
+# server #0 - make sure to use the number in the brackets [x]
+host     [0] = "slackers.ddns.net"
+port     [0] = 6969
+channel  [0] = "#slackers"
+srvpass  [0] = ""
+password [0] = ""
+ssl      [0] = True
 
 # (OPTIONAL) pager channel settings *KEEP THESE VERY PRIVATE* 
 # to request private channel contact me here:
@@ -61,16 +60,17 @@ pager_port     = 6667
 pager_channel  = ""
 pager_password = ""
 pager_ssl      = False
-# to request an private channel on my irc daemon contact me on bbs.opicron.eu or send me a private netmail on 
 
 # which name in private channel should the pager react to? Any response from this name
 # will pull the user into IRC from paging screen. Defaults to Sysop name configured in MysticBBS. 
 # Override to use another name.
 pager_sysop_name = ""
 
-# poll users for away status. disabled by default to prevent flood kick on large channels
-# set to true on irc channels with +/- 10 users for live away status
-poll_users = False
+# to request an private channel on my irc daemon contact me on bbs.opicron.eu or send me a private netmail on 
+
+# set to true on irc channels to poll users for live away status
+# this should not cause flood kicks!
+poll_users = True
 
 ###################################################################################################################
 # Ansi settings
@@ -139,7 +139,7 @@ mci_chat_prompt = '|09 >> |15'
 # array of bot names ['name','name']
 mci_bot_names = ['FB']
 
-mci_bot_prefix = '|09* '
+mci_bot_prefix = '|08[|09*|08] '
 
 # chat bar text color
 mci_chat_color = '|15'
@@ -149,6 +149,9 @@ max_chat_lines = 18
 
 # max line length
 max_line_len = 79
+
+# whisper private message indication
+mci_whisper_prvmsg = "|08prvmsg|09>"
 
 # whisper postfix
 mci_whisper_postfix = ''
@@ -204,13 +207,8 @@ mci_list_name_away_color = "|08"
 mci_list_name_color = "|09"
 
 # How much time between name and away status poll in regular channels 
-user_polltime = 200
-
-# Time between name and away status poll in sysop chat (to inform user when sysop leaves on away)
-sysop_polltime = 100
-
-# Poll timeout (resets poll)
-poll_timeout = 250
+# each tic is 0.05s (200 = 10 seconds)
+user_polltime = 400
 
 # name list xy
 mci_list_name_xy = "|[X64|[Y05"
@@ -218,6 +216,7 @@ mci_list_name_xy = "|[X64|[Y05"
 mci_list_name_top_char = ":"
 mci_list_name_middle_char = "|"
 mci_list_name_bottom = "|01`--------------'"
+
 
 
 ###################################################################################################################
