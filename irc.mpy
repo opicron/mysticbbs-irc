@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
+# ::::: __________________________________________________________________ :::::
+# : ____\ ._ ____ _____ __. ____ ___ _______ .__ ______ .__ _____ .__ _. /____ :
+# __\ .___! _\__/__    / _|__   / _/_____  __|  \ gRK __|_ \  __  |_ \ !___. /__
+# \   ! ___/  |/  /___/  |   \__\ ._/  __\/  \   \___/  |/  \/  \_./  \___ !   /
+# /__  (___   /\____\____|\   ____|   /  /___|\   ______.    ____\|\   ___)  __\
+#   /____  \_/ ___________ \_/ __ |__/ _______ \_/ ____ |___/ _____ \_/  ____\
+# :     /________________________________________________________________\     :
+# :::::       +  p  H  E  N  O  M  p  R  O  D  U  C  T  I  O  N  S  +      :::::
+# ==============================================================================
 # iCHAT 2.20 (c) opicron 2021-2022
 #
 # Licence: GPL
 
 #TODO:
 # - check user on ban
-# - check why /NAMES is continuesly being polled! better use join/part/kick/ban/quits!
-# - split connect and join command
 # - privmsg too long jumps screen
 # - timestamps?
 # - remember privmsgs on away
@@ -28,7 +35,6 @@ DEBUG = True
 #------------------------------------------------------------------------------------------------------
 # imports
 #------------------------------------------------------------------------------------------------------
-
 
 import re, os, sys, time, socket, traceback, threading
 try:
@@ -81,7 +87,7 @@ if not hasattr(config, 'srvpass'):
     config.srvpass[0] = "" 
     config.srvpass[1] = ""
 
-
+if not hasattr(config, 'username_tab'):         config.username_tab         = True
 if not hasattr(config, 'poll_users'):           config.poll_users           = True
 if not hasattr(config, 'pager_sysop_name'):     config.pager_sysop_name     = ""
 if not hasattr(config, 'pager_host'):           config.pager_host           = ""
@@ -172,7 +178,6 @@ stop_threads    = False
 start_chat      = False
 redraw          = True
 drawhdr         = False
-drawusers       = True
 pollusers	    = False
 
 chatbuffer      = []
@@ -440,7 +445,10 @@ def utf_to_ascii( s ):
         '\xf9\xa4':'u',
         '\xc4\x99':'e',
         '\xc4\x97':'e',
-        '\xc4\x93':'e'
+        '\xc4\x93':'e',
+        '\x02': '\033[1m', #bold on
+        '\x0f': '\033[0m'  #bold off
+
     }
 
     #clearly i am a codepage noob for manually converting unicode to ascii. -sigh-
@@ -450,7 +458,6 @@ def utf_to_ascii( s ):
     for key in dictionary.keys():
         p = re.compile(key,re.UNICODE)
         s = re.sub(p,dictionary[key],s) #or #s = re.sub(key,dictionary[key],s)
-
 
     # replace unfound regular expression with underscore    
     p1 = re.compile(ur'\xe2[\x00-\xFF][\x00-\xFF]',re.UNICODE) #"/[\x{2600}-\x{267F}]/u"  #in the range [\x{2600}-\x{267F}] (i.e. U+2600 to U+267F) # for future use
@@ -812,7 +819,7 @@ def get_mci_str( s, position, truncate=True ):
 #------------------------------------------------------------------------------
 def say( name, s, default_color ):
 
-    global ircbuffer, chatbuffer, drawusers, MCI_LAST_BG, MCI_LAST_FG
+    global ircbuffer, chatbuffer, MCI_LAST_BG, MCI_LAST_FG
 
     # first part of string always draw name
     drawname = True
@@ -1321,23 +1328,6 @@ def thread_listen(s):
                         chatbuffer.append( config.mci_join_color + text )
                         redraw = True       
 
-                    #ison response
-                    #elif ( command == "303" ):
-                    #    names = args.pop( ).split( )
-
-                    #    if len( USERS ) > 0:
-                    #        for i, USER in enumerate(USERS):
-                    #            found = False
-                    #            for name in names:
-                    #                if USER[1].translate(None,'%@+') == name:
-                    #                    found = True
-                    #                    index = i
-                                
-                    #            if not found:
-                    #                USERS[i][0] = True
-
-                    #        redrawusers = True
-
                     #who list entry
                     elif ( command == "352" ):
                         #<channel> <user> <host> <server> <nick> <H|G>[*][@|+] :<hopcount> <real name>
@@ -1544,7 +1534,7 @@ def thread_listen(s):
 
 def thread_page(s,):
 
-    global stop_threads, start_chat, drawusers #, stop_page
+    global stop_threads, start_chat #, drawusers #, stop_page
 
     user_interrupt  = False
     pagecount       = 300
@@ -1566,11 +1556,11 @@ def thread_page(s,):
             updatebar(config.pager_bar_startpos, count, pagecount, config.pager_bar_length, False)
             flush()
 
-        time.sleep( 0.1 )
-
         # send irc message
-        if (count == 10 or count == 30 or count == 50 or count == 100): # and stop_page == False:
+        if (count == 1 or count == 10 or count == 150 or count == 250): # and stop_page == False:
             send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + config.pager_sysop_name)
+
+        time.sleep( 0.1 )
 
         # check key input for abort
         if keypressed( ):
@@ -1601,7 +1591,7 @@ def thread_page(s,):
 
 def thread_say( s, ):
 
-    global stop_threads, chatbuffer, redraw, drawhdr, USERS, drawusers, draw_irc, redrawusers, JOINCHANNEL, pollusers, CHANNEL, PASSWORD, PRVMSGUSER, DESTPRVUSER, writebufferpos, writebuffer, ircbuffer
+    global stop_threads, chatbuffer, redraw, drawhdr, USERS, draw_irc, redrawusers, JOINCHANNEL, pollusers, CHANNEL, PASSWORD, PRVMSGUSER, DESTPRVUSER, writebufferpos, writebuffer, ircbuffer
 
     writebuffer = ''
 
@@ -1676,10 +1666,10 @@ def thread_say( s, ):
                                 chatbuffer.append( config.mci_action_color + NICK + " " + concat(writebuffer.split(),1) )
 
                             elif command in ['/NAMES']:
-                                if drawusers == False:
-                                    drawusers = True
+                                if config.username_tab == False:
+                                    config.username_tab = True
                                 else:
-                                    drawusers = False
+                                    config.username_tab = False
 
                                 redrawusers = True
                                 redraw = True
@@ -1892,10 +1882,10 @@ def thread_say( s, ):
 
                     #toggle names
                     elif key == KEY_CTRLN and extended == False:
-                        if drawusers == False:
-                            drawusers = True
+                        if config.username_tab == False:
+                            config.username_tab = True
                         else:
-                            drawusers = False
+                            config.username_tab = False
 
                         redrawusers = True
                         redraw = True
@@ -1918,7 +1908,7 @@ def thread_say( s, ):
 
                         for y in range(1,config.max_chat_lines): #clear screen
                             gotoxy(mci_extract_x(config.mci_chat_xy),mci_extract_y(config.mci_chat_xy)+y)
-                            if drawusers == False or y > len(USERS)+1:
+                            if config.username_tab == False or y > len(USERS)+1:
                                 write( config.mci_clearline )
                             else:
                                 write( "|$X63 " )
@@ -2016,7 +2006,7 @@ def thread_say( s, ):
                         startpos = len(ircbuffer) - config.max_chat_lines - chatbufferpos
 
                     while count < config.max_chat_lines and count < len(ircbuffer):
-                        if drawusers == False or count > len(USERS) or CHANNEL == "": #drawusers = False: 
+                        if config.username_tab == False or count > len(USERS) or CHANNEL == "": #drawusers = False: 
                             writeln( config.mci_chat_line_x + ircbuffer[startpos + count][:77] + config.mci_clearline )
                         else:
                             writeln( config.mci_chat_line_x + ircbuffer[startpos + count][:62] + "|$X63 " )
@@ -2037,7 +2027,7 @@ def thread_say( s, ):
                         if count < len( chatbuffer ):
                             drawline = chatbuffer[ startpos + count ]
 
-                        if drawusers == False or count > len(USERS) or CHANNEL == "":
+                        if config.username_tab == False or count > len(USERS) or CHANNEL == "":
                             write( config.mci_chat_line_x )
                             print_line( drawline )
                             writeln( config.mci_clearline )
@@ -2049,7 +2039,11 @@ def thread_say( s, ):
                         count += 1
                         
                 #draw user tab
-                if redrawusers == True and drawusers == True and len( USERS ) > 0:
+                if redrawusers == True and config.username_tab == True and len( USERS ) > 0:
+                    #sorted_list = sorted(list_to_sort, key=lambda x: (x[1], x[0]))
+                    #True if (x > 10 and x < 20) else False                
+                    USERS.sort(key=lambda x: x[1][0].upper())
+                    #USERS = sorted(USERS, key=itemgetter(2,0,1))
                     online = 0
                     
                     for i, USER in enumerate( USERS ):
