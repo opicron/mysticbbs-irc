@@ -1483,7 +1483,7 @@ def thread_listen(s):
                     # topic
                     elif ( command == "332" ):
                         if CHANNEL.upper() == args[1].upper():
-                            setpinfo( 9, args.pop( ) ) #modt
+                            setpinfo( 9, args.pop( )[:65] ) #modt
                             drawhdr = True
                                             
                     # new topic
@@ -1491,7 +1491,7 @@ def thread_listen(s):
 
                         TOPIC = args.pop( )
                         #setpinfo( 8, CHANNEL )
-                        setpinfo( 9, TOPIC ) #modt
+                        setpinfo( 9, TOPIC[:65] ) #modt
                         drawhdr = True
 
                         say( "", FROM + " changed topic to: " + TOPIC, config.mci_notice )                        
