@@ -1,8 +1,13 @@
-
-###################################################################################################################
-# iChat Configuration
-###################################################################################################################
-
+# ::::: __________________________________________________________________ :::::
+# : ____\ ._ ____ _____ __. ____ ___ _______ .__ ______ .__ _____ .__ _. /____ :
+# __\ .___! _\__/__    / _|__   / _/_____  __|  \ gRK __|_ \  __  |_ \ !___. /__
+# \   ! ___/  |/  /___/  |   \__\ ._/  __\/  \   \___/  |/  \/  \_./  \___ !   /
+# /__  (___   /\____\____|\   ____|   /  /___|\   ______.    ____\|\   ___)  __\
+#   /____  \_/ ___________ \_/ __ |__/ _______ \_/ ____ |___/ _____ \_/  ____\
+# :     /________________________________________________________________\     :
+# :::::       +  p  H  E  N  O  M  p  R  O  D  U  C  T  I  O  N  S  +      :::::
+# ==============================================================================
+# iChat v2.2 Configuration
 
 ###################################################################################################################
 # Server settings
@@ -39,7 +44,7 @@ srvpass  [1] = ""
 password [1] = "iChatTriv"
 ssl      [1] = True
 
-# server #0 - make sure to use the number in the brackets [x]
+# server #2 - make sure to use the number in the brackets [x]
 host     [0] = "slackers.ddns.net"
 port     [0] = 6969
 channel  [0] = "#slackers"
@@ -66,7 +71,9 @@ pager_ssl      = False
 # Override to use another name.
 pager_sysop_name = ""
 
-# to request an private channel on my irc daemon contact me on bbs.opicron.eu or send me a private netmail on 
+# show username tab by default? 
+# set to False to disable
+username_tab = True
 
 # set to true on irc channels to poll users for live away status
 # this should not cause flood kicks!
