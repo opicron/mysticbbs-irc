@@ -1161,7 +1161,10 @@ def thread_listen(s):
 
                     args = line.split()
 
-                    command = args.pop(0)
+                    #Nikoh reported error here
+                    command = "";
+                    if len(args)>0:
+                        command = args.pop(0)
 
                     if trailing:
                         args.append(trailing.rstrip())
@@ -1228,7 +1231,12 @@ def thread_listen(s):
                         text = args.pop( ) 
                             
                         if TO.upper() == CHANNEL.upper():
-                            text = args.pop( ) 
+
+                            #Nikoh mentioned error here
+                            text = ""
+                            if len(args)>0:
+                                text = args.pop( ) 
+
                             say( FROM, text, config.mci_notice )
 
                         elif TO == NICK:
