@@ -1349,6 +1349,14 @@ def thread_listen(s):
                                         USERS[i][0] = True
                                     else:
                                         USERS[i][0] = False
+
+                                    if nick.upper() == config.pager_sysop_name.upper():
+                                        if "PAGER" in actions:
+                                            if sysop_left == False:
+                                                # avoid false positive
+                                                if USERS[i][0] == True:
+                                                    chatbuffer.append( config.mci_default_bg + config.mci_action_color + SYSOP + " left the chat, feel free to exit :P" )
+                                                    sysop_left = True
                         
                     #end of who list
                     elif ( command == "315" ):
@@ -1457,7 +1465,7 @@ def thread_listen(s):
                         redraw = True
 
                     # quit
-                    elif ( command == "QUIT" or line[ 1 ] == "PART"):                          
+                    elif ( command == "QUIT" or ( len(line) > 0 and line[ 1 ] == "PART") ):                          
 
                         leavemethod = "left"
                         if (command == "QUIT"):
