@@ -967,7 +967,7 @@ def connect( channel="", password="", first=True ):
             #or
             context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
             
-            
+        
         try:
             sock.connect( ( HOST, PORT ) )
             if SSL:
