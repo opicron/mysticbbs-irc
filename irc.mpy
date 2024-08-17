@@ -8,7 +8,7 @@
 # :     /________________________________________________________________\     :
 # :::::       +  p  H  E  N  O  M  p  R  O  D  U  C  T  I  O  N  S  +      :::::
 # ==============================================================================
-# iCHAT 2.20 (c) opicron 2021-2022
+# iCHAT 2.30 (c) opicron 2021-2022
 #
 # Licence: GPL
 
@@ -175,6 +175,7 @@ MCI_LAST_BG     = ""
 
 error_halt      = False
 stop_threads    = False
+self_stop       = False
 start_chat      = False
 redraw          = True
 drawhdr         = False
@@ -967,18 +968,30 @@ def connect( channel="", password="", first=True ):
             #or
             context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
             
-        
+        s = None
         try:
+            sock.settimeout( 2 )
             sock.connect( ( HOST, PORT ) )
             if SSL:
-                s = context.wrap_socket(sock)
+                s = context.wrap_socket(sock) #, do_handshake_on_connect=False)
+                #s.do_handshake()
+                #writeln("|14"+str(s.cipher()))
+                #getkey()
             else:   
                 s = sock
+                #writeln("|14"+str(s.cipher()))
+                #getkey()
 
-        except Exception as e: 
-            writeln( "Exception: %s" % ( e ) )
-            s.close( )
+        except (Exception, socket.error), exc:
+            #except Exception as e: 
+            #writeln( "Exception: %s" % ( e ) )
+            drawchat()
+            logerror("iChat: Caught socket exception: %s" % exc)
+            writeln( "|14Caught socket exception: %s" % exc )
+            if (s != None): 
+              s.close( )
             #irc_down = True
+            getkey()
             return False
 
         s.settimeout( 1 )
@@ -1114,7 +1127,7 @@ def updateusers( NAME ):
 
 def thread_listen(s):
     try:
-        global error_halt, stop_threads, start_chat, chatbuffer, ircbuffer, redraw, drawhdr, NICK, USERS, redrawusers, pollusers, JOINCHANNEL, CHANNEL, AUTOJOINS, PRVMSGUSER, DESTPRVUSER, DEBUG #, stop_page 
+        global self_stop, error_halt, stop_threads, start_chat, chatbuffer, ircbuffer, redraw, drawhdr, NICK, USERS, redrawusers, pollusers, JOINCHANNEL, CHANNEL, AUTOJOINS, PRVMSGUSER, DESTPRVUSER, DEBUG #, stop_page 
 
         data = ''
         buf = ''
@@ -1132,6 +1145,14 @@ def thread_listen(s):
                 #readbuffer = readbuffer + s.recv(1024).decode('utf-8')
                 
                 data = buf + s.recv(1024)
+
+                #"" means socket has been closed
+                if (data == ""): 
+                    if (self_stop == False):
+                      writeln('|14Socket closed by host, press any key')
+                      logerror('iChat: Socket closed by host')
+                      stop_threads = True
+                      getkey()
 
                 if not "\r\n" in data:  # skip recv if we already have another line buffered.
                     data += s.recv(1024)
@@ -1514,7 +1535,7 @@ def thread_listen(s):
                         redraw = True
 
             # socket.timeout:
-            except socket.timeout:                   
+            except socket.timeout:  
 
                 # shutdown 
                 if stop_threads or shutdown():                        
@@ -1522,11 +1543,13 @@ def thread_listen(s):
 
             # SSLerror timeout
             except ssl.SSLError as ssl_error:
-            #except Exception, e:
-
+            
                 if stop_threads or shutdown():                        
                     sys.exit( )
 
+            #except Exception, e:
+            #    writeln( "exception"+format(e))
+            #    getkey()
                 #print "Exception {0} occurred".format(e)
                 #continue
 
@@ -1550,7 +1573,7 @@ def thread_listen(s):
 
 def thread_page(s,):
 
-    global stop_threads, start_chat #, drawusers #, stop_page
+    global self_stop, stop_threads, start_chat #, drawusers #, stop_page
 
     user_interrupt  = False
     pagecount       = 300
@@ -1583,6 +1606,7 @@ def thread_page(s,):
             key, extended = getkey( )
 
             if key == KEY_ESCAPE:                    
+                self_stop = True
                 user_interrupt = True
                 stop_threads = True
                 break
@@ -1607,7 +1631,7 @@ def thread_page(s,):
 
 def thread_say( s, ):
 
-    global stop_threads, chatbuffer, redraw, drawhdr, USERS, draw_irc, redrawusers, JOINCHANNEL, pollusers, CHANNEL, PASSWORD, PRVMSGUSER, DESTPRVUSER, writebufferpos, writebuffer, ircbuffer
+    global self_stop, stop_threads, chatbuffer, redraw, drawhdr, USERS, draw_irc, redrawusers, JOINCHANNEL, pollusers, CHANNEL, PASSWORD, PRVMSGUSER, DESTPRVUSER, writebufferpos, writebuffer, ircbuffer
 
     writebuffer = ''
 
@@ -1692,6 +1716,7 @@ def thread_say( s, ):
 
 
                             elif command in ['/EXIT','/QUIT','/Q']:
+                                self_stop = True
                                 stop_threads = True
 
                             elif command in ['/PART','/P']:
@@ -1937,6 +1962,7 @@ def thread_say( s, ):
                         
                         if writebuffer[writebufferpos-2:writebufferpos] <> '@[': #avoid exit on insert key (netrunner beta 20)
                             send("QUIT :client closed iChat")
+                            self_stop = True
                             stop_threads = True
 
                     # autocomplete names
