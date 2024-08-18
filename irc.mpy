@@ -443,6 +443,40 @@ def utf_to_ascii( s ):
         # '\xc3\xbe' þ LATIN SMALL LETTER THORN
         '\xc3\xbf':chr(152), # ÿ LATIN SMALL LETTER Y WITH DIAERESIS
 
+       '\xe2\x96\x8c':chr(221), # left block ▌	
+       '\xe2\x96\x8d':chr(221), # left block ▍
+       '\xe2\x96\x8e':chr(221), # left block ▎
+       '\xe2\x96\x90':chr(222), # right block ▐ 
+
+       '\xe2\x96\x80':chr(220), # top block ▀
+       '\xe2\x96\x84':chr(223), # bottom block ▄
+       '\xe2\x96\x85':chr(220), # bottom block ▅
+       '\xe2\x96\x86':chr(223), # bottom block ▆
+
+        '\xe2\x96\xa0':chr(254), #black square ■
+        
+#U+25A0	■	\xe2\x96\xa0
+#U+2580	▀	\xe2\x96\x80
+#U+2581	▁	\xe2\x96\x81
+#U+2582	▂	\xe2\x96\x82
+#U+2583	▃	\xe2\x96\x83
+#U+2584	▄	\xe2\x96\x84
+#U+2585	▅	\xe2\x96\x85
+#U+2586	▆	\xe2\x96\x86
+#U+2587	▇	\xe2\x96\x87
+#U+2588	█	\xe2\x96\x88
+#U+2589	▉	\xe2\x96\x89
+#U+258A	▊	\xe2\x96\x8a
+#U+258B	▋	\xe2\x96\x8b
+#U+258C	▌	\xe2\x96\x8c
+#U+258D	▍	\xe2\x96\x8d
+#U+258E	▎	\xe2\x96\x8e
+#U+258F	▏	\xe2\x96\x8f
+#U+2590	▐	\xe2\x96\x90
+#U+2591	░	\xe2\x96\x91
+#U+2592	▒	\xe2\x96\x92
+#U+2593	▓	\xe2\x96\x93
+
         '\xf9\xa4':'u',
         '\xc4\x99':'e',
         '\xc4\x97':'e',
