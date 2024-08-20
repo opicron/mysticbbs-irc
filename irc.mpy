@@ -1566,20 +1566,31 @@ def thread_listen(s):
 
             # socket.timeout:
             except socket.timeout:  
-
-                # shutdown 
+               # write('1')
+               # shutdown 
                 if stop_threads or shutdown():                        
                     sys.exit( )
 
             # SSLerror timeout
-            except ssl.SSLError as ssl_error:
+            #except ssl.SSLError as ssl_error:
+            #except socket.Timeouterror:
             
-                if stop_threads or shutdown():                        
-                    sys.exit( )
+            #    write('1')
+            #    if stop_threads or shutdown():                        
+            #        sys.exit( )
 
-            #except Exception, e:
+            except Exception, e:
             #    writeln( "exception"+format(e))
             #    getkey()
+                 #write('1')
+                 if SSL:
+                    if isinstance(e, ssl.SSLError):
+                        #write('test ssl timeout')
+                        pass
+                        
+                 if stop_threads or shutdown():                        
+                    sys.exit( )
+
                 #print "Exception {0} occurred".format(e)
                 #continue
 
