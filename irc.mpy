@@ -31,6 +31,7 @@
 # - add mci idefault prompt code fg/bg color
 
 DEBUG = True
+LOADSSL = False
 
 #------------------------------------------------------------------------------------------------------
 # imports
@@ -39,6 +40,7 @@ DEBUG = True
 import re, os, sys, time, socket, traceback, threading
 try:
     import ssl
+    LOADSSL = True
 except:
     pass
 
@@ -986,12 +988,19 @@ def find_between( s, first, last ):
 #------------------------------------------------------------------------------
 def connect( channel="", password="", first=True ):
 
-    global s, SSL, HOST, PORT, NICK, CHANNEL, PASSWORD, drawhdr, user
+    global s, SSL, HOST, PORT, NICK, CHANNEL, PASSWORD, drawhdr, user, LOADSSL
 
     if first:
         sock = socket.socket( )
 
         if SSL:
+            if not LOADSSL:
+                drawchat()
+                logerror("iChat: Cannot connect to SSL without importing SSL")
+                writeln( "|14Could not import SSL")
+                getkey()
+                return False
+
             #context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
             context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
             #context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -1003,6 +1012,7 @@ def connect( channel="", password="", first=True ):
             sock.settimeout( 2 )
             sock.connect( ( HOST, PORT ) )
             if SSL:
+
                 s = context.wrap_socket(sock, False)
                 #s.do_handshake()
                 #writeln("|14"+str(s.cipher()))
