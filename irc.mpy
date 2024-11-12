@@ -8,7 +8,7 @@
 # :     /________________________________________________________________\     :
 # :::::       +  p  H  E  N  O  M  p  R  O  D  U  C  T  I  O  N  S  +      :::::
 # ==============================================================================
-# iCHAT 2.30 (c) opicron 2021-2022
+# iChat v3.1 (c) opicron 2021-2024 :: SRC
 #
 # Licence: GPL
 
@@ -30,18 +30,20 @@
 #
 # - add mci idefault prompt code fg/bg color
 
-DEBUG = True
-LOADSSL = False
+DEBUG = False
 
 #------------------------------------------------------------------------------------------------------
 # imports
 #------------------------------------------------------------------------------------------------------
 
-import re, os, sys, time, socket, traceback, threading
+import re, os, sys, time, socket, traceback, threading, ConfigParser
+
+# keep track if ssl import succeeded
 try:
     import ssl
     LOADSSL = True
 except:
+    LOADSSL = False
     pass
 
 from threading import Thread
@@ -56,96 +58,56 @@ from mystic_bbs import *
 SCRIPTDIR = getcfg()['script']+'irc'+os.sep    
 sys.path.append(SCRIPTDIR)                      
 
-import config
+# custom parse to make sure qoutes are trimmed
+class MyConfigParser(ConfigParser.RawConfigParser):
+    def get(self, section, option):
+        val = ConfigParser.RawConfigParser.get(self, section, option)
+        if isinstance(val, (int, float)):
+            return val
+        return val.strip('"') #.strip("'")
 
-# make sure default settings are loaded
-if not hasattr(config, 'max_chat_lines'):   config.max_chat_lines   = 18
-if not hasattr(config, 'max_nick_len'):     config.max_nick_len     = 13
-if not hasattr(config, 'server_id'):        config.server_id        = 0
-if not hasattr(config, 'max_servers'):      config.max_servers      = 10
+# set default configurations
+defaultcfg = SCRIPTDIR+'default.ini'
+customcfg = SCRIPTDIR+'custom.ini'
+defaultcfg_wide = SCRIPTDIR+'default.ini'
+customcfg_wide = SCRIPTDIR+'custom.ini'
 
-if not hasattr(config, 'host'):     
-    config.host= [0 for i in range(config.max_servers)]
-    config.host[0] = "irc.opicron.eu"
-    config.host[1] = "irc.opicron.eu"
-if not hasattr(config, 'port'): 
-    config.port = [0 for i in range(config.max_servers)]
-    config.port[0] = 6667
-    config.port[1] = 6667
-if not hasattr(config, 'channel'): 
-    config.channel = [0 for i in range(config.max_servers)]
-    config.channel[0] = "#General"
-    config.channel[1] = "#Trivia"
-if not hasattr(config, 'password'): 
-    config.password = [0 for i in range(config.max_servers)]
-    config.password[0] = "iChatGen"
-    config.password[1] = "iChatTriv"
-if not hasattr(config, 'ssl'): 
-    config.ssl = [0 for i in range(config.max_servers)]
-    config.ssl[0] = False
-    config.ssl[1] = False
-if not hasattr(config, 'srvpass'): 
-    config.srvpass = [0 for i in range(config.max_servers)]
-    config.srvpass[0] = "" 
-    config.srvpass[1] = ""
+# read config
+config2 = MyConfigParser() #config2 = ConfigParser.SafeConfigParser()
+config2.read(defaultcfg)
+config2.read(customcfg)
 
-if not hasattr(config, 'username_tab'):         config.username_tab         = True
-if not hasattr(config, 'poll_users'):           config.poll_users           = True
-if not hasattr(config, 'pager_sysop_name'):     config.pager_sysop_name     = ""
-if not hasattr(config, 'pager_host'):           config.pager_host           = ""
-if not hasattr(config, 'pager_port'):           config.pager_port           = 6667
-if not hasattr(config, 'pager_channel'):        config.pager_channel        = ""
-if not hasattr(config, 'pager_ssl'):            config.pager_channel        = False
-if not hasattr(config, 'pager_password'):       config.pager_password       = ""
-if not hasattr(config, 'mci_clearscr'):         config.mci_clearscr         = '|07|16|CL'
-if not hasattr(config, 'filename_pager'):       config.filename_pager       = 'pager.ans'
-if not hasattr(config, 'filename_chatscreen'):  config.filename_chatscreen  = 'chat.ans'
-if not hasattr(config, 'strip_irc_codes'):      config.strip_irc_codes      = False
-if not hasattr(config, 'mci_notice'):           config.mci_notice           = '|14'
-if not hasattr(config, 'mci_error'):            config.mci_error            = '|12'
-if not hasattr(config, 'mci_default_fg'):       config.mci_default_fg       = '|07'
-if not hasattr(config, 'mci_default_bg'):       config.mci_default_bg       = '|16'
-if not hasattr(config, 'mci_clearline'):        config.mci_clearline        = '|[K'
-if not hasattr(config, 'mci_channel_clearline'): config.mci_channel_clearline = '|$X48 '
-if not hasattr(config, 'mci_topic_clearline'):  config.mci_topic_clearline  = '|$X78 '
-if not hasattr(config, 'mci_chat_xy'):          config.mci_chat_xy          = '|[X01|[Y05'
-if not hasattr(config, 'mci_chat_line_x'):      config.mci_chat_line_x      = '|[X01 '
-if not hasattr(config, 'mci_channel_color'):    config.mci_channel_color    = '|15'
-if not hasattr(config, 'mci_channel_name_xy'):  config.mci_channel_name_xy  = '|[X13|[Y02'
-if not hasattr(config, 'mci_topic_color'):      config.mci_topic_color      = '|15'
-if not hasattr(config, 'mci_channel_topic_xy'): config.mci_channel_topic_xy = '|[X13|[Y03'
-if not hasattr(config, 'add_timestamp'):        config.add_timestamp        = False
-if not hasattr(config, 'mci_chat_prompt_xy'):   config.mci_chat_prompt_xy   = '|[Y24|[X01'
-if not hasattr(config, 'mci_chat_prompt'):      config.mci_chat_prompt      = '|09 >> |15'
-if not hasattr(config, 'mci_prompt_len'):       config.mci_prompt_len       = 75
-if not hasattr(config, 'mci_bot_names'):        config.mci_bot_names        = ['FB']
-if not hasattr(config, 'mci_bot_prefix'):       config.mci_bot_prefix       = '|08[|09*|08] '
-if not hasattr(config, 'mci_chat_color'):       config.mci_chat_color       = '|15'
-if not hasattr(config, 'max_chat_lines'):       config.max_chat_lines       = 18
-if not hasattr(config, 'max_line_len'):         config.max_line_len         = 79
-if not hasattr(config, 'mci_whisper_prvmsg'):   config.mci_whisper_prvmsg   = "|08prvmsg|09>"
-if not hasattr(config, 'mci_whisper_prefix'):   config.mci_whisper_prefix   = '|08[|12*|08] '
-if not hasattr(config, 'mci_whisper_postfix'):  config.mci_whisper_postfix  = ''
-if not hasattr(config, 'mci_name_color'):       config.mci_name_color       = '|15'
-if not hasattr(config, 'mci_name_postfix'):     config.mci_name_postfix     = '|09: '
-if not hasattr(config, 'mci_action_color'):     config.mci_action_color     = '|09'
-if not hasattr(config, 'mci_join_color'):       config.mci_join_color       = '|08'
-if not hasattr(config, 'pager_bar_blank'):      config.pager_bar_blank      = '|16|08'+chr(176)
-if not hasattr(config, 'pager_bar_fill'):       config.pager_bar_fill       = '|16|11'+chr(178)
-if not hasattr(config, 'pager_bar_startpos'):   config.pager_bar_startpos   = '|[X23|[Y13'
-if not hasattr(config, 'pager_bar_length'):     config.pager_bar_length     = 46
-if not hasattr(config, 'pager_time_startpos'):  config.pager_time_startpos  = '|[X64|[Y11|09'
-if not hasattr(config, 'pager_connected'):      config.pager_connected      = '|[X10|[Y15|15status |08[|10connected|08]'
-if not hasattr(config, 'forced_exit_notice'):   config.forced_exit_notice   = "|[Y24|[X02|14press any key to exit..|[K|PN"
-if not hasattr(config, 'uppercase_first_key'):  config.uppercase_first_key  = False
-if not hasattr(config, 'poll_timeout'):         config.poll_timeout         = 250
+# test mystic 1.12a48 configuration capability
+x, y = termsize();
 
-if not hasattr(config, 'mci_list_name_away_color'):     config.mci_list_name_away_color     = "|08"
-if not hasattr(config, 'mci_list_name_color'):          config.mci_list_name_color          = "|09"
-if not hasattr(config, 'mci_list_name_xy'):             config.mci_list_name_xy             = "|[X64|[Y05"
-if not hasattr(config, 'mci_list_name_top_char'):       config.mci_list_name_top_char       = ":"
-if not hasattr(config, 'mci_list_name_middle_char'):    config.mci_list_name_middle_char    = "|"
-if not hasattr(config, 'mci_list_name_bottom'):         config.mci_list_name_bottom         = "|01`--------------'"
+try:
+    find_config('test','ini')
+except NameError:
+    if os.path.exists(SCRIPTDIR+'default.c'+str(x)+'x'+str(y)+'.ini'):
+        defaultcfg_wide = SCRIPTDIR+'default.c'+str(x)+'x'+str(y)+'.ini'
+    elif os.path.exists(SCRIPTDIR+'default.c'+str(x)+'.ini'):
+        defaultcfg_wide = SCRIPTDIR+'default.c'+str(x)+'.ini'
+
+    if os.path.exists(SCRIPTDIR+'custom.c'+str(x)+'x'+str(y)+'.ini'):
+        defaultcfg_wide = SCRIPTDIR+'custom.c'+str(x)+'x'+str(y)+'.ini'
+    elif os.path.exists(SCRIPTDIR+'custom.c'+str(x)+'.ini'):
+        customcfg_wide = SCRIPTDIR+'custom.c'+str(x)+'.ini'
+    pass
+else:        
+    defaultcfg_wide = find_config(SCRIPTDIR+'default','ini')            
+    customcfg_wide = find_config(SCRIPTDIR+'custom','.ini')            
+
+#logerror(str(defaultcfg_wide))
+#logerror(str(customcfg_wide))
+
+#only load when different to original configuration
+if defaultcfg_wide != None and defaultcfg != defaultcfg_wide:
+    config2.read(defaultcfg_wide)
+
+#only load when different to original configuration    
+if customcfg_wide != None and customcfg != customcfg_wide:
+    config2.read(customcfg_wide)
+
 
 #------------------------------------------------------------------------------------------------------
 # key defines
@@ -238,31 +200,57 @@ def concat(str_arr, index = 0 ):
     return str
 #------------------------------------------------------------------------------------------------------
 
+def find_display_custom( filepath ):
+    
+    try:
+        find_display('test')
+    except NameError:        
+        x, y = termsize();
+
+        base = filepath[:-4] 
+
+        if os.path.exists(base + '.c' + str(x) + 'x' + str(y) + '.ans'):
+            return base + '.c' + str(x) + 'x' + str(y) + '.ans'
+
+        elif os.path.exists(base + '.c' + str(x) + '.ans'):
+            return base + '.c' + str(x) + '.ans'
+        
+        else:
+            return filepath
+
+    else:        
+        return find_display( filepath[:-4] )            
+        
 #------------------------------------------------------------------------------
 def drawpager():
-  write( config.mci_clearscr )
-  showfile( SCRIPTDIR + config.filename_pager, 0, False, False, False )  
+
+    file = find_display_custom( SCRIPTDIR + config2.get('ansi','filename_pager') )
+    write( config2.get('mci','mci_clearscr') )
+    showfile( file, 0, False, False, False )  
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
 def drawchat():
-  write( config.mci_clearscr )
-  showfile( SCRIPTDIR + config.filename_chatscreen, 0,False, False, False )  
-  write( config.mci_chat_prompt_xy + config.mci_clearline + config.mci_chat_prompt_xy + config.mci_chat_prompt )
 
+    file = find_display_custom( SCRIPTDIR + config2.get('ansi','filename_chatscreen') )
+    write( config2.get('mci','mci_clearscr') )  
+    showfile( file, 0,False, False, False )    
+    write( config2.get('mci','mci_chat_prompt_xy') + config2.get('mci','mci_clearline') + config2.get('mci','mci_chat_prompt_xy') + config2.get('mci','mci_chat_prompt') )
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
 def drawhelp():
-  write( config.mci_clearscr )
-  showfile( SCRIPTDIR + "irc_help.ans", 0, False, False, False )  
+
+    file = find_display_custom( SCRIPTDIR + config2.get('ansi','filename_help') )
+    write( config2.get('mci','mci_clearscr') )  
+    showfile( file, 0, False, False, False )  
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
 def updatebar(start_pos, index, total, height, vertical=True):
 
-    hdr_bar_low       = config.pager_bar_blank
-    hdr_bar_high      = config.pager_bar_fill
+    hdr_bar_low       = config2.get('pager','pager_bar_blank')
+    hdr_bar_high      = config2.get('pager','pager_bar_fill')
 
     if vertical == True:
       for i in range(0,height+1):
@@ -450,12 +438,11 @@ def utf_to_ascii( s ):
        '\xe2\x96\x8e':chr(221), # left block ▎
        '\xe2\x96\x90':chr(222), # right block ▐ 
 
-       '\xe2\x96\x80':chr(220), # top block ▀
-       '\xe2\x96\x84':chr(223), # bottom block ▄
-       '\xe2\x96\x85':chr(220), # bottom block ▅
+       '\xe2\x96\x84':chr(220), # top block ▀
+       '\xe2\x96\x80':chr(223), # bottom block ▄
+       '\xe2\x96\x85':chr(223), # bottom block ▅
        '\xe2\x96\x86':chr(223), # bottom block ▆
-
-        '\xe2\x96\xa0':chr(254), #black square ■
+       '\xe2\x96\xa0':chr(254), #black square ■
 
 #https://www.ascii.ca/cp437.htm
 #https://r12a.github.io/app-conversion/
@@ -479,9 +466,10 @@ def utf_to_ascii( s ):
         '\xc4\x99':'e',
         '\xc4\x97':'e',
         '\xc4\x93':'e',
-        '\x02': '\033[1m', #bold on
-        '\x0f': '\033[0m'  #bold off
-
+        #'\x02': '\033[1m', #bold on #caused issues with string length
+        #'\x0f': '\033[0m'  #bold off #causes issues with stirng length
+        '\x02': '', #bold on 
+        '\x0f': ''  #bold off
     }
 
     #clearly i am a codepage noob for manually converting unicode to ascii. -sigh-
@@ -513,27 +501,27 @@ def utf_to_ascii( s ):
 def irc_fg_mci ( s ):
     
     if len(s) < 2:
-        return config.mci_default_fg+config.mci_default_bg
+        return config2.get('mci','mci_default_fg')+config2.get('mci','mci_default_bg')
 
     # !important return default background together with fg color
     return {
-        ''  : '|07' + config.mci_default_bg,
-        '00' : '|15' + config.mci_default_bg, #irc white 00 to mci white 14
-        '01' : '|00' + config.mci_default_bg, #black
-        '02' : '|01' + config.mci_default_bg, #blue (navy)
-        '03' : '|02' + config.mci_default_bg, #green 
-        '04' : '|04' + config.mci_default_bg, #red
-        '05' : '|06' + config.mci_default_bg, #brown (maroon)
-        '06' : '|05' + config.mci_default_bg, #purple
-        '07' : '|12' + config.mci_default_bg, #orange
-        '08' : '|14' + config.mci_default_bg, #yellow
-        '09' : '|03' + config.mci_default_bg, #light green (lime)
-        '10' : '|10' + config.mci_default_bg, #teal (green/blue cyan)
-        '11' : '|11' + config.mci_default_bg, #light cyan (agua)
-        '12' : '|09' + config.mci_default_bg, #light blue (royal)
-        '13' : '|13' + config.mci_default_bg, #ping (light purple)
-        '14' : '|08' + config.mci_default_bg, #grey
-        '15' : '|07' + config.mci_default_bg, #light grey (silver) 
+        ''  : '|07' + config2.get('mci','mci_default_bg'),
+        '00' : '|15' + config2.get('mci','mci_default_bg'), #irc white 00 to mci white 14
+        '01' : '|00' + config2.get('mci','mci_default_bg'), #black
+        '02' : '|01' + config2.get('mci','mci_default_bg'), #blue (navy)
+        '03' : '|02' + config2.get('mci','mci_default_bg'), #green 
+        '04' : '|04' + config2.get('mci','mci_default_bg'), #red
+        '05' : '|06' + config2.get('mci','mci_default_bg'), #brown (maroon)
+        '06' : '|05' + config2.get('mci','mci_default_bg'), #purple
+        '07' : '|12' + config2.get('mci','mci_default_bg'), #orange
+        '08' : '|14' + config2.get('mci','mci_default_bg'), #yellow
+        '09' : '|03' + config2.get('mci','mci_default_bg'), #light green (lime)
+        '10' : '|10' + config2.get('mci','mci_default_bg'), #teal (green/blue cyan)
+        '11' : '|11' + config2.get('mci','mci_default_bg'), #light cyan (agua)
+        '12' : '|09' + config2.get('mci','mci_default_bg'), #light blue (royal)
+        '13' : '|13' + config2.get('mci','mci_default_bg'), #ping (light purple)
+        '14' : '|08' + config2.get('mci','mci_default_bg'), #grey
+        '15' : '|07' + config2.get('mci','mci_default_bg'), #light grey (silver) 
     } [s]
 #------------------------------------------------------------------------------
 
@@ -541,7 +529,7 @@ def irc_fg_mci ( s ):
 def irc_bg_mci ( s ):
 
     if len(s) < 2:
-        return config.mci_default_bg
+        return config2.get('mci','mci_default_bg')
 
     return {
         ''  : '|16', #black
@@ -570,7 +558,7 @@ def irc_bg_mci ( s ):
 def irc_to_mci( s ):
       
     # if strip all irc codes is set        
-    if config.strip_irc_codes == True:        
+    if config2.getboolean('interface','strip_irc_codes') == True:        
 
         #strip all irc codes and styles
         s = strip_all.sub('',s)
@@ -623,7 +611,7 @@ def mci_to_irc( s ):
         23 : '14'
     }
     
-    lastfg = colors[int(config.mci_default_fg[1:])]
+    lastfg = colors[int(config2.get('mci','mci_default_fg')[1:])]
     lastbg = False #avoid setting black background on irc clients
 
     pos = s.find("|")
@@ -693,8 +681,8 @@ def get_mci_colors( s, position ):
     mci_count = 0
     mci_str = "" #keep track of mci colors
 
-    LAST_BG = config.mci_default_bg
-    LAST_FG = config.mci_default_fg
+    LAST_BG = config2.get('mci','mci_default_bg')
+    LAST_FG = config2.get('mci','mci_default_fg')
 
     for element in s:
 
@@ -740,8 +728,8 @@ def get_mci_colors( s, position ):
 
                     if colorcode >= 0 and colorcode <= 23:
                         #change to mci prompt code color
-                        MCI_LAST_BG = config.mci_default_bg
-                        MCI_LAST_FG = config.mci_default_fg
+                        MCI_LAST_BG = config2.get('mci','mci_default_bg')
+                        MCI_LAST_FG = config2.get('mci','mci_default_fg')
 
             mci_char = True
             mci_count = 0
@@ -774,8 +762,8 @@ def get_mci_str( s, position, truncate=True ):
     mci_count = 0
     mci_str = "" #keep track of mci colors
 
-    LAST_BG = config.mci_default_bg
-    LAST_FG = config.mci_default_fg
+    LAST_BG = config2.get('mci','mci_default_bg')
+    LAST_FG = config2.get('mci','mci_default_fg')
 
     r = ""
 
@@ -858,28 +846,28 @@ def say( name, s, default_color ):
     drawname = True
 
     timestamp = ""
-    if config.add_timestamp:
+    if config2.getboolean('interface','add_timestamp'):
         timestamp = '|09'+time.strftime("%H|08:|09%M ", time.gmtime())
 
     if name == "":
-        tmpname = timestamp + config.mci_default_bg
+        tmpname = timestamp + config2.get('mci','mci_default_bg')
     else:
-        tmpname = timestamp + config.mci_default_bg + config.mci_name_color + name.replace("_","|08_"+config.mci_name_color) + config.mci_name_postfix
+        tmpname = timestamp + config2.get('mci','mci_default_bg') + config2.get('mci','mci_name_color') + name.replace("_","|08_"+config2.get('mci','mci_name_color')) + config2.get('mci','mci_name_postfix')
 
     # calc name length with postfix
-    name_len = len( stripmci( tmpname ) ) + len( stripmci (config.mci_name_postfix ) ) - 3
+    name_len = len( stripmci( tmpname ) ) + len( stripmci (config2.get('mci','mci_name_postfix') ) ) - 3
 
     # check if configured bot name
-    for i, BOT in enumerate(config.mci_bot_names):
+    for i, BOT in enumerate(config2.get('general','bot_names').split(',') ):
         if name == BOT:
-            tmpname = config.mci_bot_prefix
-            name_len = len( stripmci( config.mci_bot_prefix ) ) - 1
+            tmpname = config2.get('mci','mci_bot_prefix')
+            name_len = len( stripmci( config2.get('mci','mci_bot_prefix') ) ) - 1
 
     #replace irc colors with mci colors      
     text = irc_to_mci( s )
 
     # calc available line len after nickname
-    available_len = config.max_line_len - name_len - len ( stripmci ( config.mci_name_postfix ) ) 
+    available_len = config2.getint('general','max_line_len') - name_len - len ( stripmci ( config2.get('mci','mci_name_postfix') ) ) 
 
     # set text buffer length # fixed -1 error!
     text_len = len( text )
@@ -897,6 +885,8 @@ def say( name, s, default_color ):
 
         #get portion of string, only count non-mci chars
         tmp = get_mci_str( text , available_len )
+        #ansi codes make problems here
+        #logerror(tmp)
 
         # avoid blank lines for whatever reason
         if len ( stripmci ( tmp ).strip( ) ) == 0:
@@ -919,7 +909,7 @@ def say( name, s, default_color ):
             r = name_str + LAST_FG + LAST_BG + tmp
 
         # add default color to end of part line
-        r = r + config.mci_default_bg
+        r = r + config2.get('mci','mci_default_bg')
         
         #add line to chat buffer
         chatbuffer.append(r)
@@ -966,11 +956,17 @@ def mci_extract_y(s):
 
 #------------------------------------------------------------------------------
 def mci_extract_x(s):
-  for match in re.findall(r'\|\[X([0-9]{2})', s):
+  for match in re.findall(r'\|\[X([0-9]{2,3})', s):
     pos = int( match )
+    #write(str(pos))
     return pos
 
-  return -1
+  for match in re.findall(r'\|\$X([0-9]{2,3})', s):
+    pos = int( match )
+    #write(str(pos)+'|PN')
+    return pos
+
+  return -2
 #------------------------------------------------------------------------------
 
 
@@ -1038,18 +1034,19 @@ def connect( channel="", password="", first=True ):
 
         username = user['handle'].translate(None, ' ')
 
-        if not config.srvpass[config.server_id] == "":
-            s.send( "PASS " + config.srvpass[config.server_id] + "\r\n" ) # only if authentication is required.    
+        if not config2.get(config2.get('general','default_server'),'srvpass') == "":
+            s.send( "PASS " + config2.get(config2.get('general','default_server'),'srvpass') + "\r\n" ) # only if authentication is required.    
 
+        sysoplog(1,'iCHAT - Connected to server [' + config2.get('general','default_server') + '] - ' + config2.get(config2.get('general','default_server'),'host') + ':' + str(config2.getint(config2.get('general','default_server'),'port') ) )
         s.send( "USER %s %s %s :%s\r\n" % (username, '-', '-', username + '@' + cfg['bbsname']) ) 
 
     if len( channel ) == 0:
         if "PAGER" in actions:
-            channel = config.pager_channel
-            password = config.pager_password
+            channel = config2.get('pager','pager_channel')
+            password = config2.get('pager','pager_password')
         else:
-            channel = config.channel[config.server_id]
-            password = config.password[config.server_id]
+            channel = config2.get(config2.get('general','default_server'),'channel')
+            password = config2.get(config2.get('general','default_server'),'password')
     
     s.send( "NICK %s\n" % NICK ) 
 
@@ -1064,8 +1061,8 @@ def connect( channel="", password="", first=True ):
         else:
             s.send( "JOIN " + channel + " " + password + "\r\n" )
 
-        setpinfo(8, config.mci_join_color )
-        setpinfo(9, config.mci_join_color )
+        setpinfo(8, config2.get('mci','mci_join_color') )
+        setpinfo(9, config2.get('mci','mci_join_color') )
 
         drawhdr = True
 
@@ -1092,10 +1089,10 @@ def draw_prompt( onlylastchar=False, removechar=False, posonly=False ):
         toggle_cursor(False)
 
 
-    MCI_LAST_FG = config.mci_default_fg
-    MCI_LAST_BG = config.mci_default_bg
+    MCI_LAST_FG = config2.get('mci','mci_default_fg')
+    MCI_LAST_BG = config2.get('mci','mci_default_bg')
 
-    if len(writebuffer) > config.mci_prompt_len:
+    if len(writebuffer) > config2.getint('interface','mci_prompt_len'):
         onlylastchar = False
         removechar = False
         posonly = False
@@ -1103,45 +1100,45 @@ def draw_prompt( onlylastchar=False, removechar=False, posonly=False ):
     #add only one char
     if onlylastchar and not removechar:
         get_mci_colors( writebuffer, len(writebuffer) )
-        write( mci_adjust_x( config.mci_chat_prompt_xy, len( writebuffer ) + 3 ) )
+        write( mci_adjust_x( config2.get('mci','mci_chat_prompt_xy'), len( writebuffer ) + 3 ) )
         write( MCI_LAST_FG + MCI_LAST_BG + writebuffer[-1:] ) #config.mci_chat_color +
 
     #remove char
     elif removechar and not onlylastchar:
-        write( mci_adjust_x( config.mci_chat_prompt_xy, len( writebuffer ) + 4 ) )
+        write( mci_adjust_x( config2.get('mci','mci_chat_prompt_xy'), len( writebuffer ) + 4 ) )
         write( MCI_LAST_FG + MCI_LAST_BG + " " ) #config.mci_chat_color +
 
     #full string
     elif not posonly:
-        write( mci_adjust_y( config.mci_chat_prompt_xy, 0 ) + mci_adjust_x( config.mci_chat_prompt_xy, + 4 ) )
+        write( mci_adjust_y( config2.get('mci','mci_chat_prompt_xy'), 0 ) + mci_adjust_x( config2.get('mci','mci_chat_prompt_xy'), + 4 ) )
         count = 0
         frompos = 0
 
-        if writebufferpos < config.mci_prompt_len:
+        if writebufferpos < config2.getint('interface','mci_prompt_len'):
             frompos = 0
         else:
             diff = len(writebuffer) - writebufferpos
-            offset = diff % config.mci_prompt_len
-            frompos = len(writebuffer) - config.mci_prompt_len - offset
+            offset = diff % config2.getint('interface','mci_prompt_len')
+            frompos = len(writebuffer) - config2.getint('interface','mci_prompt_len') - offset
 
         for c in writebuffer:
             count += 1
             #how to write from start, or from writebufferpos, or until end of line       
-            if count > frompos and count <= (frompos + config.mci_prompt_len):                        
+            if count > frompos and count <= (frompos + config2.getint('interface','mci_prompt_len')):                        
                 write( MCI_LAST_FG + MCI_LAST_BG + c )
                 get_mci_colors( writebuffer, count )
 
 
     if not posonly:
-        write( config.mci_default_bg + config.mci_clearline )
+        write( config2.get('mci','mci_default_bg') + config2.get('mci','mci_clearline') )
 
     if not onlylastchar:
         toggle_cursor(True)
 
-    if writebufferpos < config.mci_prompt_len:   
-        write( mci_adjust_x( config.mci_chat_prompt_xy, writebufferpos + 4 ) )
+    if writebufferpos < config2.getint('interface','mci_prompt_len'):   
+        write( mci_adjust_x( config2.get('mci','mci_chat_prompt_xy'), writebufferpos + 4 ) )
     else:        
-        write( mci_adjust_x( config.mci_chat_prompt_xy, config.mci_prompt_len + 4 ) )
+        write( mci_adjust_x( config2.get('mci','mci_chat_prompt_xy'), config2.getint('interface','mci_prompt_len') + 4 ) )
     
 #-----------------------------------------------------------------------------------------------------
 
@@ -1233,8 +1230,9 @@ def thread_listen(s):
                     FROM = prefix.partition( "!" )[0]
 
                     # debug irc data
-                    if DEBUG or (not DEBUG and command not in ["338","301","311","312","313","314","315","316","317","318","319","378","379","353","366","671"]):
+                    if DEBUG or (not DEBUG and command not in ["338","301","311","312","313","314","315","316","317","318","319","372","378","379","352","353","366","671"]):
                         ircbuffer.append( command + " " + str(args) )
+                        #logerror(command + " " + str(args))
 
                     # error
                     if ( command == "ERROR" ): 
@@ -1246,7 +1244,7 @@ def thread_listen(s):
                         
                         redraw = True
                         error_halt = True
-                        sys.exit() # exit this thread
+                        #sys.exit(0) # exit this thread
 
                     # ping
                     elif ( command == "PING" ):
@@ -1256,7 +1254,7 @@ def thread_listen(s):
                     elif ( command == "475" ):
                         MSG = args.pop( )
                         destchan = args.pop( )
-                        chatbuffer.append( config.mci_notice + MSG )
+                        chatbuffer.append( config2.get('mci','mci_notice') + MSG )
 
                         #if this is the target join channel and we cannot join remove channel validation
                         if destchan.upper() == CHANNEL.upper():
@@ -1268,7 +1266,7 @@ def thread_listen(s):
                     elif ( command == "403" ):
                         MSG = args.pop( )
                         destchannel = args.pop( )
-                        chatbuffer.append( config.mci_notice + MSG + ': ' + destchannel )
+                        chatbuffer.append( config2.get('mci','mci_notice') + MSG + ': ' + destchannel )
                         #CHANNEL = "" #why would we reset channel?!
 
                     # not in channel
@@ -1282,7 +1280,7 @@ def thread_listen(s):
                         #482 kick priveleges to low
                         #401 no such nick or channel
                         MSG = args.pop( )
-                        chatbuffer.append( config.mci_notice + MSG )
+                        chatbuffer.append( config2.get('mci','mci_notice') + MSG )
                         redraw = True
 
                     # notices
@@ -1298,13 +1296,17 @@ def thread_listen(s):
                             if len(args)>0:
                                 text = args.pop( ) 
 
-                            say( FROM, text, config.mci_notice )
-
+                            say( FROM, text, config2.get('mci','mci_notice') )
+                        
                         elif TO == NICK:
-                            say( config.mci_whisper_prefix + config.mci_name_color + FROM + config.mci_whisper_postfix, text, config.mci_default_fg )
+                            say( config2.get('mci','mci_whisper_prefix') + config2.get('mci','mci_name_color') + FROM + config2.get('mci','mci_whisper_postfix'), text, config2.get('mci','mci_default_fg') )
 
                             if DESTPRVUSER == None:
                                 PRVMSGUSER = FROM
+
+                        else:
+                            #connection notices
+                            say( '', config2.get('mci','mci_whisper_prefix') + text, config2.get('mci','mci_action_color') )
 
                         redraw = True       
                     
@@ -1317,17 +1319,17 @@ def thread_listen(s):
                             # if action
                             if args[1].find( "\x01ACTION" ) != -1:
                                 MSG = args.pop()
-                                chatbuffer.append( config.mci_action_color + FROM + " " + MSG.translate(None, b"\x01ACTION").translate(None, "\x01")[1:] ) 
+                                chatbuffer.append( config2.get('mci','mci_action_color') + FROM + " " + MSG.translate(None, b"\x01ACTION").translate(None, "\x01")[1:] ) 
 
                             # if message
                             else:
 
-                                if FROM.upper() == config.pager_sysop_name.upper(): 
+                                if FROM.upper() == config2.get('pager', 'pager_sysop_name').upper(): 
                                     #start chat if response written
                                     if start_chat == False:
                                         start_chat = True
 
-                                say( FROM, args[1], config.mci_default_fg )
+                                say( FROM, args[1], config2.get('mci','mci_default_fg') )
 
                         # whispers
                         elif args[0] == NICK:
@@ -1335,11 +1337,11 @@ def thread_listen(s):
                             # if action
                             if args[1].find( "\x01ACTION" ) != -1:
                                 MSG = args[1]
-                                chatbuffer.append( config.mci_whisper_prefix + config.mci_action_color + FROM + config.mci_whisper_postfix + " " + config.mci_action_color + MSG.translate(None, b"\x01ACTION").translate(None, "\x01")[1:] )
+                                chatbuffer.append( config2.get('mci','mci_whisper_prefix') + config2.get('mci','mci_action_color') + FROM + config2.get('mci','mci_whisper_postfix') + " " + config2.get('mci','mci_action_color') + MSG.translate(None, b"\x01ACTION").translate(None, "\x01")[1:] )
 
                             # if message
                             else:                                
-                                say( config.mci_whisper_prefix + config.mci_name_color + FROM + config.mci_whisper_postfix, args[1], config.mci_default_fg )
+                                say( config2.get('mci','mci_whisper_prefix') + config2.get('mci','mci_name_color') + FROM + config2.get('mci','mci_whisper_postfix'), args[1], config2.get('mci','mci_default_fg') )
 
                             if DESTPRVUSER == None:
                                 PRVMSGUSER = FROM
@@ -1361,12 +1363,12 @@ def thread_listen(s):
                                     USERS[i][0] = True
                                     #redrawusers = True #dont redraw, only on ISON_RPL
 
-                                if tmpname.upper() == config.pager_sysop_name.upper():                           
+                                if tmpname.upper() == config2.get('pager', 'pager_sysop_name').upper(): 
                                     if "PAGER" in actions:
                                         if sysop_left == False:
                                             # avoid false positive
                                             if len( USERS ) > 0:
-                                                chatbuffer.append( config.mci_default_bg + config.mci_action_color + SYSOP + " left the chat, feel free to exit :P" )
+                                                chatbuffer.append( config2.get('mci','mci_default_bg') + config2.get('mci','mci_action_color') + SYSOP + " left the chat, feel free to exit :P" )
                                                 redraw = True
                                                 sysop_left = True
                                         #stop_threads = True
@@ -1382,7 +1384,7 @@ def thread_listen(s):
                                     redrawusers = True
 
                         text = args.pop( ) 
-                        chatbuffer.append( config.mci_join_color + text )
+                        chatbuffer.append( config2.get('mci','mci_join_color') + text )
                         redraw = True       
 
                     elif ( command == "306" ):
@@ -1394,7 +1396,7 @@ def thread_listen(s):
                                     redrawusers = True
 
                         text = args.pop( ) 
-                        chatbuffer.append( config.mci_join_color + text )
+                        chatbuffer.append( config2.get('mci','mci_join_color') + text )
                         redraw = True       
 
                     #who list entry
@@ -1405,18 +1407,18 @@ def thread_listen(s):
 
                         if len( USERS ) > 0:
                             for i, USER in enumerate(USERS):
-                                if nick == USER[1].translate(None,'%@+') and nick not in config.mci_bot_names:
+                                if nick == USER[1].translate(None,'%@+') and nick not in config2.get('general','bot_names').split(','):
                                     if status.find("G") > -1:
                                         USERS[i][0] = True
                                     else:
                                         USERS[i][0] = False
 
-                                    if nick.upper() == config.pager_sysop_name.upper():
+                                    if nick.upper() == config2.get('pager', 'pager_sysop_name').upper(): 
                                         if "PAGER" in actions:
                                             if sysop_left == False:
                                                 # avoid false positive
                                                 if USERS[i][0] == True:
-                                                    chatbuffer.append( config.mci_default_bg + config.mci_action_color + SYSOP + " left the chat, feel free to exit :P" )
+                                                    chatbuffer.append( config2.get('mci','mci_default_bg') + config2.get('mci','mci_action_color') + SYSOP + " " + config2.get('pager','mci_sysop_left') )
                                                     sysop_left = True
                         
                     #end of who list
@@ -1447,7 +1449,7 @@ def thread_listen(s):
                                 away = False
 
                                 # check if configured bot name
-                                for i, BOT in enumerate(config.mci_bot_names):
+                                for i, BOT in enumerate(config2.get('general','bot_names').split(',')):
                                     if tmpname == BOT:
                                         away = True
 
@@ -1461,7 +1463,7 @@ def thread_listen(s):
 
                         updateusers( FROM )
 
-                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " left " + args.pop( 0 ) )
+                        chatbuffer.append( config2.get('mci','mci_default_bg') + config2.get('mci','mci_join_color') + FROM + " left " + args.pop( 0 ) )
                         redraw = True
 
                     # join                   
@@ -1473,7 +1475,7 @@ def thread_listen(s):
                             CHANNEL = joinchannel
                             JOINCHANNEL = ""
 
-                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " joined " + joinchannel )
+                        chatbuffer.append( config2.get('mci','mci_default_bg') + config2.get('mci','mci_join_color') + FROM + " joined " + joinchannel )
 
                         #save join information    
                         AUTOJOINS.append(joinchannel)
@@ -1499,28 +1501,28 @@ def thread_listen(s):
                         updateusers( WHO )
 
                         if WHO == NICK:
-                            chatbuffer.append( config.mci_error + "Kicked by " + args.pop( 1 ) )
+                            chatbuffer.append( config2.get('mci','mci_error') + "Kicked by " + args.pop( 1 ) )
                             error_halt = True
                         else:
                             if FROM == NICK:
-                                chatbuffer.append( config.mci_notice + "You kicked " + WHO )
+                                chatbuffer.append( config2.get('mci','mci_notice') + "You kicked " + WHO )
                             else:
-                                chatbuffer.append( config.mci_notice + FROM + " kicked " + WHO )
+                                chatbuffer.append( config2.get('mci','mci_notice') + FROM + " kicked " + WHO )
                         
                         redraw = True                        
                     
                     # nick name error
                     elif ( command == "432"):
-                        chatbuffer.append( config.mci_notice + args.pop( ) )
-                        chatbuffer.append( config.mci_join_color + "Reconnecting with alternate nickname" )
+                        chatbuffer.append( config2.get('mci','mci_notice') + args.pop( ) )
+                        chatbuffer.append( config2.get('mci','mci_join_color') + config2.get('mci','mci_reconnect_name') )
                         NICK = "_" + NICK
                         connect( "", "", False )
                         redraw = True
 
                     # nick in use
                     elif ( command == "433" ):
-                        chatbuffer.append( config.mci_notice + args.pop( ) )
-                        chatbuffer.append( config.mci_join_color + "Reconnecting with alternate nickname" )
+                        chatbuffer.append( config2.get('mci','mci_notice') + args.pop( ) )
+                        chatbuffer.append( config2.get('mci','mci_join_color') + config2.get('mci','mci_reconnect_name') )
                         NICK = NICK + "_" 
                         connect( "", "", False )
                         redraw = True
@@ -1534,7 +1536,7 @@ def thread_listen(s):
 
                         updateusers( FROM )
 
-                        chatbuffer.append( config.mci_default_bg + config.mci_join_color + FROM + " " + leavemethod + " " + args.pop( ) )
+                        chatbuffer.append( config2.get('mci','mci_default_bg') + config2.get('mci','mci_join_color') + FROM + " " + leavemethod + " " + args.pop( ) )
                         redraw = True
                         redrawusers = True
 
@@ -1542,14 +1544,14 @@ def thread_listen(s):
                             #only in pager mode                                      
                             if "PAGER" in actions:
                                 if sysop_left == False:
-                                    chatbuffer.append( config.mci_default_bg + config.mci_action_color + SYSOP + " left the chat, feel free to exit :P" )
+                                    chatbuffer.append( config2.get('mci','mci_default_bg') + config2.get('mci','mci_action_color') + SYSOP + " " + config2.get('pager','mci_sysop_left') )
                                     redraw = True
                                     sysop_left = True
                     
                     # MODT - server
                     elif ( command == "372" ): 
                         MODT = args.pop( )
-                        say('', config.mci_action_color + MODT[2:], config.mci_default_fg)
+                        say('', config2.get('mci','mci_action_color') + MODT[2:], config2.get('mci','mci_default_fg') )
                         redraw = True
 
                     #end of modt
@@ -1571,15 +1573,16 @@ def thread_listen(s):
                         setpinfo( 9, TOPIC[:65] ) #modt
                         drawhdr = True
 
-                        say( "", FROM + " changed topic to: " + TOPIC, config.mci_notice )                        
+                        say( "", FROM + config2.get('mci','mci_topic_change') + TOPIC, config2.get('mci','mci_notice') )
                         redraw = True
 
             # socket.timeout:
             except socket.timeout:  
+                pass
                # write('1')
                # shutdown 
-                if stop_threads or shutdown():                        
-                    sys.exit( )
+               # if stop_threads or shutdown():                        
+               #     sys.exit(0)
 
             # SSLerror timeout
             #except ssl.SSLError as ssl_error:
@@ -1598,8 +1601,8 @@ def thread_listen(s):
                         #write('test ssl timeout')
                         pass
                         
-                 if stop_threads or shutdown():                        
-                    sys.exit( )
+                # if stop_threads or shutdown():                        
+                #    sys.exit(0)
 
                 #print "Exception {0} occurred".format(e)
                 #continue
@@ -1611,11 +1614,12 @@ def thread_listen(s):
         write(msg+"|PN")
 
         stop_threads = True
-        sys.exit( 1 )
+        #sys.exit(0)
 
     # close sockets on exit
     s.shutdown( socket.SHUT_RDWR )
     s.close( )
+
 
 
 ###################################################################################################################
@@ -1634,21 +1638,22 @@ def thread_page(s,):
     #------------------------------------------------------------------------------------------------------
     # page loop
     #------------------------------------------------------------------------------------------------------
+    
+    menucmd('NA','iCHAT - Paging Sysop')
+    sysoplog(1, 'iCHAT - Paging Sysop')
 
     while count < pagecount + 1 and start_chat == False and stop_threads == False:
-
-        menucmd('NA','Paging Sysop')
 
         pos = float(count) / pagecount * 46
         pos = int(pos)
         if pos <> oldpos:
             oldpos = pos
-            updatebar(config.pager_bar_startpos, count, pagecount, config.pager_bar_length, False)
+            updatebar(config2.get('pager','pager_bar_startpos'), count, pagecount, config2.getint('pager','pager_bar_length'), False)
             flush()
 
         # send irc message
         if (count == 1 or count == 10 or count == 150 or count == 250): # and stop_page == False:
-            send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + config.pager_sysop_name)
+            send( "PRIVMSG " + CHANNEL + " :" + "Requesting chat with " + config2.get('pager', 'pager_sysop_name')) 
 
         time.sleep( 0.1 )
 
@@ -1696,7 +1701,7 @@ def thread_say( s, ):
 
     redrawusers = False
     draw_irc = False
-    pollcount = config.poll_timeout - 60
+    pollcount = config2.getint('interface','poll_timeout') - 60
     if pollcount < 0: 
         pollcount = 0
 
@@ -1708,11 +1713,11 @@ def thread_say( s, ):
     try:
         while stop_threads == False and not shutdown():
             if drawhdr == True:
-                write( config.mci_channel_name_xy )
-                write( config.mci_channel_color + "|&8" + config.mci_channel_clearline )
+                write( config2.get('mci','mci_channel_name_xy') )
+                write( config2.get('mci','mci_channel_color') + "|&8" + config2.get('mci','mci_channel_clearline') )
 
-                write( config.mci_channel_topic_xy )
-                write( config.mci_channel_color + "|&9" + config.mci_topic_clearline )
+                write( config2.get('mci','mci_channel_topic_xy') )
+                write( config2.get('mci','mci_channel_color') + "|&9" + config2.get('mci','mci_topic_clearline') )
 
                 draw_prompt( False, False, True )
                 drawhdr = False
@@ -1727,8 +1732,8 @@ def thread_say( s, ):
                     elif writebuffer.upper().find('/R') == 0 and len(writebuffer) < 3: #TODO: check
                         DESTPRVUSER = PRVMSGUSER
                 
-                if pollcount > config.poll_timeout:
-                    if config.poll_users == True:
+                if pollcount > config2.getint('interface','poll_timeout'):
+                    if config2.getboolean('interface','poll_users') == True:
 
                         names = ""
                         for NAME in USERS:
@@ -1748,19 +1753,24 @@ def thread_say( s, ):
                         writebufferpos = 0
 
                         # only send if data to send
-                        if len( writebuffer ) > 0:
+                        if len( writebuffer.strip() ) == 0:
+                            writebuffer = ''
+                            writebufferpos = 0
+                            typebufferpos = 0
+                            draw_prompt( False )
+                        else:
                             TYPEBUFFER.append( writebuffer )
                             command = writebuffer.split()[0].upper()
 
                             if command == '/ME':
                                 send("PRIVMSG " + CHANNEL + " :\x01ACTION" + " " + concat(writebuffer.split(),1) + "\x01") ##\x01 or \001
-                                chatbuffer.append( config.mci_action_color + NICK + " " + concat(writebuffer.split(),1) )
+                                chatbuffer.append( config2.get('mci','mci_action_color') + NICK + " " + concat(writebuffer.split(),1) )
 
                             elif command in ['/NAMES']:
-                                if config.username_tab == False:
-                                    config.username_tab = True
+                                if config2.getboolean('interface','username_tab') == False:
+                                    config2.set('interface','username_tab', 'true')
                                 else:
-                                    config.username_tab = False
+                                    config2.set('interface','username_tab', 'false')
 
                                 redrawusers = True
                                 redraw = True
@@ -1805,7 +1815,7 @@ def thread_say( s, ):
                                                 send("TOPIC" + " " + CHANNEL + "\n")
 
                                                 drawhdr = True
-                                                chatbuffer.append( config.mci_default_bg + config.mci_join_color + NICK + " switched to " + CHANNEL )
+                                                chatbuffer.append( config2.get('mci','mci_default_bg') + config2.get('mci','mci_join_color') + NICK + " switched to " + CHANNEL )
                                                 
                                         
                                         if not found:
@@ -1867,9 +1877,9 @@ def thread_say( s, ):
                                     lines = writebuffer.split()
                                     if len(lines) > 1:
                                         send( "PRIVMSG " + DESTPRVUSER + " :" + concat(lines,1) + "\r\n", True) 
-                                        chatbuffer.append( config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + DESTPRVUSER.replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix + config.mci_name_postfix + config.mci_default_fg + concat(lines,1) + "|09" )                                    
+                                        chatbuffer.append( config2.get('mci','mci_whisper_prefix') + config2.get('mci','mci_whisper_prvmsg') + config2.get('mci','mci_name_color') + DESTPRVUSER.replace("_","|08_"+config2.get('mci','mci_name_color') ) + config2.get('mci','mci_whisper_postfix') + config2.get('mci','mci_name_postfix') + config2.get('mci','mci_default_fg') + concat(lines,1) + "|09" )
                                 else:
-                                    chatbuffer.append( config.mci_notice + "No private message received yet" )
+                                    chatbuffer.append( config2.get('mci','mci_notice') + "No private message received yet" )
 
                             elif command in ['/MSG','/TELL','/T']:
                                 lines = writebuffer.split()
@@ -1879,7 +1889,7 @@ def thread_say( s, ):
                                         for i, USER in enumerate(USERS):
                                             if USER[1].translate(None,'%@+').upper() == lines[1].upper():
                                                 lines[1] = USER[1].translate(None,'%@+') #if found use it
-                                    say(config.mci_whisper_prefix + config.mci_whisper_prvmsg + config.mci_name_color + lines[1].replace("_","|08_"+config.mci_name_color) + config.mci_whisper_postfix, concat(lines,2), config.mci_default_fg )
+                                    say(config2.get('mci','mci_whisper_prefix') + config2.get('mci','mci_whisper_prvmsg') + config2.get('mci','mci_name_color') + lines[1].replace("_","|08_"+config2.get('mci','mci_name_color') ) + config2.get('mci','mci_whisper_postfix'), concat(lines,2), config2.get('mci','mci_default_fg') )
 
                             elif command in ['/CLR','/CLS','/CLEAR']:
                                 chatbuffer = []
@@ -1892,7 +1902,7 @@ def thread_say( s, ):
 
                             elif command[0] <> '/':                                
                                 send( "PRIVMSG " + CHANNEL + " :" + mci_to_irc( writebuffer ))
-                                say( config.mci_name_color + NICK.replace("_","|08_"+config.mci_channel_color), writebuffer, config.mci_default_fg )
+                                say( config2.get('mci','mci_name_color') + NICK.replace("_","|08_"+config2.get('mci','mci_channel_color') ), writebuffer, config2.get('mci','mci_default_fg') )
 
                             writebuffer = ""                            
                             redraw = True
@@ -1936,11 +1946,11 @@ def thread_say( s, ):
 
                     elif key == KEY_PGUP and extended == True:
                         if draw_irc == True:
-                            if (len( ircbuffer ) - config.max_chat_lines) > chatbufferpos:
+                            if (len( ircbuffer ) - config2.getint('general','max_chat_lines') ) > chatbufferpos:
                                 chatbufferpos = chatbufferpos + 1
                         
                         else:                    
-                            if (len( chatbuffer ) - config.max_chat_lines) > chatbufferpos:
+                            if (len( chatbuffer ) - config2.getint('general','max_chat_lines') ) > chatbufferpos:
                                 chatbufferpos = chatbufferpos + 1
                         
                         redraw = True
@@ -1974,10 +1984,10 @@ def thread_say( s, ):
 
                     #toggle names
                     elif key == KEY_CTRLN and extended == False:
-                        if config.username_tab == False:
-                            config.username_tab = True
+                        if config2.getboolean('interface','username_tab') == False:
+                            config2.set('interface','username_tab', 'true')
                         else:
-                            config.username_tab = False
+                            config2.set('interface','username_tab', 'false')
 
                         redrawusers = True
                         redraw = True
@@ -1998,10 +2008,10 @@ def thread_say( s, ):
                         else:
                             draw_irc = False
 
-                        for y in range(1,config.max_chat_lines): #clear screen
-                            gotoxy(mci_extract_x(config.mci_chat_xy),mci_extract_y(config.mci_chat_xy)+y)
-                            if config.username_tab == False or y > len(USERS)+1:
-                                write( config.mci_clearline )
+                        for y in range(1,config2.getint('general','max_chat_lines') ): #clear screen
+                            gotoxy(mci_extract_x( config2.get('mci','mci_chat_xy') ),mci_extract_y( config2.get('mci','mci_chat_xy') )+y)
+                            if config2.getboolean('interface','username_tab') == False or y > len(USERS)+1:
+                                write( config2.get('mci','mci_clearline') )
                             else:
                                 write( "|$X63 " )
 
@@ -2072,7 +2082,10 @@ def thread_say( s, ):
 
                             #auto capitol first character
                             if len(writebuffer) == 0:
-                                if config.uppercase_first_key == True:
+                                #if ord(key) == 32:
+                                #    continue
+
+                                if config2.getboolean('interface','uppercase_first_key') == True:
                                     key = key.upper()
 
                             if writebufferpos > len( writebuffer ) - 1:
@@ -2091,48 +2104,70 @@ def thread_say( s, ):
             if redraw == True:
                 toggle_cursor(False)
                 if draw_irc == True: # draw irc data
-                    write( config.mci_chat_xy + config.mci_join_color )
+                    write( config2.get('mci','mci_chat_xy') + config2.get('mci','mci_join_color') )
                     startpos = 0
                     count = 0
 
-                    if len(ircbuffer) > config.max_chat_lines:
-                        startpos = len(ircbuffer) - config.max_chat_lines - chatbufferpos
+                    if len(ircbuffer) > config2.getint('general','max_chat_lines'):
+                        startpos = len(ircbuffer) - config2.getint('general','max_chat_lines') - chatbufferpos
 
-                    while count < config.max_chat_lines and count < len(ircbuffer):
-                        if config.username_tab == False or count > len(USERS) or CHANNEL == "": #drawusers = False: 
-                            writeln( config.mci_chat_line_x + ircbuffer[startpos + count][:77] + config.mci_clearline )
+                    while count < config2.getint('general','max_chat_lines'): # and count < len(ircbuffer):
+
+                        drawline = ""
+                        if count < len( ircbuffer ):
+                            drawline = ircbuffer[startpos + count]
+
+                        if config2.getboolean('interface','username_tab') == False or count > len(USERS) or CHANNEL == "": #drawusers = False:
+                            # max_line_len was :77  
+                            writeln( config2.get('mci','mci_chat_line_x') + drawline[:config2.getint('general','max_line_len')] + config2.get('mci','mci_clearline') )
+
                         else:
-                            writeln( config.mci_chat_line_x + ircbuffer[startpos + count][:62] + "|$X63 " )
+                            write( config2.get('mci','mci_chat_line_x') + drawline[:mci_extract_x(config2.get('mci','mci_clear_to_tab'))] )# + config2.get('mci','mci_clear_to_tab') )
+                            filler = ""
+                            truncatepos = mci_extract_x( config2.get('mci','mci_clear_to_tab') )
+                            for x in range(wherex(),truncatepos+1):
+                                filler = filler + " "
+                            writeln( config2.get('mci','mci_default_bg') + filler )
 
-                        count = count + 1
+                        count += 1
+                    #else:
+                    #    writeln( config2.get('mci','mci_chat_line_x') + config2.get('mci','mci_clearline') )
+                    #    count = count + 1
 
                 else: # draw chat data
-                    write( config.mci_chat_xy )
+                    write( config2.get('mci','mci_chat_xy') )
                     startpos = 0
                     count = 0
 
-                    if len(chatbuffer) > config.max_chat_lines:
-                        startpos = len(chatbuffer) - config.max_chat_lines - chatbufferpos
+                    if len(chatbuffer) > config2.getint('general','max_chat_lines'):
+                        startpos = len(chatbuffer) - config2.getint('general','max_chat_lines') - chatbufferpos
 
-                    while count < config.max_chat_lines:
+                    while count < config2.getint('general','max_chat_lines'):
 
                         drawline = ""
                         if count < len( chatbuffer ):
                             drawline = chatbuffer[ startpos + count ]
 
-                        if config.username_tab == False or count > len(USERS) or CHANNEL == "":
-                            write( config.mci_chat_line_x )
-                            print_line( drawline )
-                            writeln( config.mci_clearline )
+                        if config2.getboolean('interface','username_tab') == False or count > len(USERS) or CHANNEL == "":
+                            write( config2.get('mci','mci_chat_line_x') )
+                            truncatepos = config2.getint('general','max_line_len')
+                            print_line( get_mci_str( drawline, truncatepos, False ) )
+                            writeln( config2.get('mci','mci_default_bg') + config2.get('mci','mci_clearline') )
                         else:
-                            write( config.mci_chat_line_x )
-                            print_line( get_mci_str( drawline, 62, False ) )
-                            writeln( config.mci_default_bg + "|$X63 " )
+                            write( config2.get('mci','mci_chat_line_x') )
+                            truncatepos = mci_extract_x( config2.get('mci','mci_clear_to_tab') )
+                            print_line( get_mci_str( drawline, truncatepos, False ) )
+                            #get x pos, repeat space until clear to tab
+                            filler = ""
+                            for x in range(wherex(),truncatepos+1):
+                                filler = filler + " "
+                            writeln( config2.get('mci','mci_default_bg') + filler )
+                            #writeln( config2.get('mci','mci_default_bg') + config2.get('mci','mci_clear_to_tab') )
 
                         count += 1
                         
                 #draw user tab
-                if redrawusers == True and config.username_tab == True and len( USERS ) > 0:
+                if redrawusers == True and config2.getboolean('interface','username_tab') == True and len( USERS ) > 0:
                     #sorted_list = sorted(list_to_sort, key=lambda x: (x[1], x[0]))
                     #True if (x > 10 and x < 20) else False                
                     USERS.sort(key=lambda x: x[1][0].upper())
@@ -2140,30 +2175,31 @@ def thread_say( s, ):
                     online = 0
                     
                     for i, USER in enumerate( USERS ):
-                        if i < config.max_chat_lines:
-                            prefix = config.mci_list_name_middle_char
+                        if i < config2.getint('general','max_chat_lines'):
+                            prefix = config2.get('mci','mci_list_name_middle_char')
                             if i == 0:
-                                prefix = config.mci_list_name_top_char
+                                prefix = config2.get('mci','mci_list_name_top_char')
 
-                            write( mci_adjust_x( config.mci_list_name_xy ) + mci_adjust_y( config.mci_list_name_xy, i ) )
+                            write( mci_adjust_x( config2.get('mci','mci_list_name_xy') ) + mci_adjust_y( config2.get('mci','mci_list_name_xy'), i ) )
 
                             if USER[0]: #away
-                                color = config.mci_list_name_away_color
+                                color = config2.get('mci','mci_list_name_away_color')
                             else:
-                                color = config.mci_list_name_color
+                                color = config2.get('mci','mci_list_name_color')
                                 online += 1
 
-                            write( "|01" + prefix + color + " " + USER[1].replace('_','|08_'+color) + config.mci_clearline)
+                            write( "|01" + prefix + color + " " + USER[1].replace('_','|08_'+color) + config2.get('mci','mci_clearline') )
         
                     #end of user list (only draw if not too many users)
-                    if len( USERS ) < config.max_chat_lines:
-                        write( mci_adjust_x( config.mci_list_name_xy ) + mci_adjust_y( config.mci_list_name_xy, len( USERS ) ) )
-                        write( config.mci_list_name_bottom + config.mci_clearline)
+                    if len( USERS ) < config2.getint('general','max_chat_lines'):
+                        write( mci_adjust_x( config2.get('mci','mci_list_name_xy') ) + mci_adjust_y( config2.get('mci','mci_list_name_xy'), len( USERS ) ) )
+                        write( config2.get('mci','mci_list_name_bottom') + config2.get('mci','mci_clearline') )
 
                     redrawusers = False
 
                     #draw total online users (not away)
-                    write( "|[X65|[Y23" ) 
+
+                    write( config2.get('mci','mci_online_count') ) 
                     postfix = " online"
                     write("|01[ |09" + str( online ) + postfix + "|01 ]")
 
@@ -2182,7 +2218,7 @@ def thread_say( s, ):
         write(msg+"|PN")
 
         stop_threads = True
-        sys.exit(1)
+        #sys.exit(0)
 
 
 
@@ -2201,7 +2237,7 @@ while i <= param_count():
     if arg == "/PAGER":
         actions.append('PAGER')
     elif arg == "/SERVER":
-        config.server_id = int(param_str(i+1)) #take next parameter
+        config2.set('general','default_server', param_str(i+1) ) #take next parameter
         i += 1
 
     i += 1
@@ -2212,19 +2248,19 @@ while i <= param_count():
 
 if "PAGER" in actions:
     #set private channel settings
-    if config.pager_host == "":
+    if config2.get('pager','pager_host') == "":
         msg = "Please define the private sysop pager channel in the configuration file"
         logerror( msg )
         write( msg + "|PN" )
         
-    HOST = config.pager_host
-    PORT = config.pager_port
-    SSL = config.pager_ssl
+    HOST = config2.get('pager','pager_host')
+    PORT = config2.getint('pager','pager_port')
+    SSL = config2.getboolean('pager','pager_ssl')
 else:
     #set public/interbbs channel settings z
-    HOST = config.host[config.server_id] 
-    PORT = config.port[config.server_id] 
-    SSL = config.ssl[config.server_id] 
+    HOST = config2.get(config2.get('general','default_server'),'host')
+    PORT = config2.getint(config2.get('general','default_server'),'port')
+    SSL = config2.getboolean(config2.get('general','default_server'),'ssl')
 
 #------------------------------------------------------------------------------------------------------
 # adjust nickname
@@ -2232,17 +2268,19 @@ else:
 
 cfg  = getcfg()   
 SYSOP = cfg['sysopname']
-if len(config.pager_sysop_name) == 0:
-    config.pager_sysop_name = SYSOP
 
-user = getuser(0) 
-NICK = user['handle'].translate(None, ' ')[:config.max_nick_len] #no spaces and max 9 chars
+if len(config2.get('pager', 'pager_sysop_name')) == 0:
+    config2.set('pager','pager_sysop_name', SYSOP)
+    #config.pager_sysop_name = SYSOP
+
+user = getuser() 
+NICK = user['handle'].translate(None, ' ')[:config2.getint('general','max_nick_len')] #:config.max_nick_len]no spaces and max 9 chars
 
 #if NICK.upper() == SYSOP.upper():
 #    NICK = NICK[:config.max_nick_len-1] + "_" # change sysop name
 
 if NICK[:1].isdigit():
-    NICK = "_" + NICK[:config.max_nick_len-1] # prevent number nick names
+    NICK = "_" + NICK[:config2.getint('general','max_nick_len')-1] #:config.max_nick_len-1] # prevent number nick names
 
 #------------------------------------------------------------------------------------------------------
 # init connection
@@ -2253,9 +2291,9 @@ if connect("","",True) == True:
     # init paging screen
     if "PAGER" in actions:
         drawpager()
-        write( config.pager_time_startpos + time.strftime("%H:%M", time.localtime()))
-        updatebar( config.pager_bar_startpos, 0, 10, config.pager_bar_length, False)
-        writeln( config.pager_connected )                    
+        write( config2.get('pager','pager_time_startpos') + time.strftime("%H:%M", time.localtime()))
+        updatebar( config2.get('pager','pager_bar_startpos'), 0, 10, config2.getint('pager','pager_bar_length'), False)
+        writeln( config2.get('pager','pager_connected') )  
 
     # init listen thread
     x1 = threading.Thread( target = thread_listen, args = ( s, ) )
@@ -2278,8 +2316,7 @@ if connect("","",True) == True:
 
 
     if error_halt == True:
-        write(config.forced_exit_notice)
+        write( config2.get('mci','forced_exit_notice') )
 
     # join listen thread to close it 
     x1.join( )
-
