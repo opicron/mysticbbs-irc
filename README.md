@@ -5,6 +5,7 @@
 Open IRC chat client with pager support. Threaded non blocking design and 100% configurable.   
 Connect to any existing server or join the preset servers.     
 
+- Widescreen suppport!
 - SSL support (thanks 0zZ and Ganiman)
 - basic irc commands
 - fully aware away status name tab
