@@ -1,0 +1,424 @@
+ ::::: __________________________________________________________________ :::::
+ : ____\ ._ ____ _____ __. ____ ___ _______ .__ ______ .__ _____ .__ _. /____ :
+ __\ .___! _\__/__    / _|__   / _/_____  __|  \ gRK __|_ \  __  |_ \ !___. /__
+ \   ! ___/  |/  /___/  |   \__\ ._/  __\/  \   \___/  |/  \/  \_./  \___ !   /
+ /__  (___   /\____\____|\   ____|   /  /___|\   ______.    ____\|\   ___)  __\
+   /____  \_/ ___________ \_/ __ |__/ _______ \_/ ____ |___/ _____ \_/  ____\
+ :     /________________________________________________________________\     :
+ :::::       +  p  H  E  N  O  M  p  R  O  D  U  C  T  I  O  N  S  +      :::::
+ ==============================================================================
+ 
+  iChat v3.1 Full Release Documentation
+  
+  >> -----------------------------------------------------------------------
+      OVERVIEW
+  >> -----------------------------------------------------------------------
+
+  os type: [x] WINDOWS : [x] 32bit [x] 64bit
+  -------- [x] LINUX : [x] 32bit [x] 64 bit
+           [ ] MACOS
+           [ ] AMIGA
+           [ ] C64
+           [ ] OTHER :
+
+  >> -----------------------------------------------------------------------
+
+  description:
+  ------------
+  open IRC chat client with pager support. Threaded non blocking design and
+  100% configurable. Connect to any existing server or join the preset
+  servers.
+
+  Basic irc commands, fully aware away status name tab, low cpu usage, SSL
+  support, full mci <-> irc color support, name tab toggle, auto join
+  compatible, mci parser output, tab completion, new: WIDESCREEN support
+
+  >> -----------------------------------------------------------------------
+
+  archive includes:
+  -----------------
+
+  >> General
+  ----------
+   release-info.txt : Detailed info: Overview, installation, changelog, etc.
+   phenom-intro.ans : About PHENOM PRODUCTIONS.
+  phenom-member.asc : PHENOM PRODUCTIONS Membership Registration Form
+        file_id.diz : ASCII description <for BBS use only>
+        file_id.ans : ANSI description <for BBS use only>
+     ..................................................................
+
+
+ >> Code / Config Files:
+ -----------------------
+              irc.mpy : Main python script
+      irc/default.ini : Configuration file
+ irc/default.c132.ini : Configuration file for 132 column screens
+       irc/custom.ini : Custom config overrides
+     ..................................................................
+
+
+ >> Ansi Files:
+ -----------------------
+         irc/chat.ans : Main window
+        irc/pager.ans : Paging window
+     irc/irc_help.ans : Help screen
+     ..................................................................
+
+ >> Prerequisites:
+ -----------------
+  Mystic 1.12 A46+ BBS
+  Python 2.7
+
+  >> -----------------------------------------------------------------------
+      INSTALLAION
+  >> -----------------------------------------------------------------------
+  
+  - Copy irc.mpy to /mystic/themes/default/scripts/ folder
+
+  - Copy folder /irc/ to /mystic/themes/default/scripts/irc/ folder
+
+  - UPGRADE FROM 2.x:
+        Advise: throw away old config.py but if you insist **
+	Copy custom settings from config.py to custom.ini
+	in /mystic/themes/default/scripts/irc
+
+  - Override settings from default.ini in custom.ini, do not
+    edit default.ini directly. This will make upgrading a breeze!
+
+  - Add python script (GY) cmd to mystic menu with argument: irc
+
+  - Enjoy ^^
+  
+  >> -----------------------------------------------------------------------
+      OPERATION
+  >> -----------------------------------------------------------------------
+
+  keys:
+  -----
+
+	#Chat
+	--------------------------------------------------------------------
+	ESC 			Exit
+	ENTER 			Send message
+	CTRL-S 			Show irc raw data
+	CTRL-N 			Show or hide name tab
+	CTRL-Z			Show help
+	Up / Down		Look up chatbuffer
+	PageUp / PageDown	Browse through IRC buffer
+	Home / End		Start / End of text buffer
+
+  >> -----------------------------------------------------------------------
+
+  Configuration:
+  ------------
+
+  The configuration method is as following. The latest overridden values 
+  loaded in the last configuration will be used.
+
+    default.ini > default.c132.ini > custom.ini > custom.c132.ini
+
+  DO NOT EDIT THE DEFAULT.XXX FILES, copy values to CUSTOM.XXX if required.
+  This will make upgrading a breeze!
+
+  The default.ini configuration files contains the main configuration like 
+  servers and pager information, it also contains the basic 80 columns screen 
+  size MCI strings.
+
+  default.c132.ini configuration contains only the MCI strings for this screen
+  size. No server information is added. This avoids having to add each config
+  option to all configuration files.
+
+  Do not edit the default configuration files. You are able to override these
+  by adding custom.ini for default size and server or by adding
+  custom.c132.ini for customizing your configuration for other screen sizes.
+
+  By keeping your overrides apart from the default configuration you are able
+  to update easy without losing information when overwriting default config
+  files.
+
+  >> -----------------------------------------------------------------------
+
+  IRC commands:
+  ------------
+
+	
+  /NAMES
+     ..................................................................
+     Toggle name tab
+	
+  /JOIN [channel] [password] (alternative: /CHANNEL /J)
+     ..................................................................
+     Join channel 
+	
+  /PART (alternative: /P)
+     ..................................................................
+     Leave current channel
+	
+  /MSG [username] (alternative: /TELL /T)
+     ..................................................................
+     Send private message to [username] in chat
+	
+  /REPLY [text] (alternative: /R)
+     ..................................................................
+     Respond to last private message
+	
+  /KICK [username]
+     ..................................................................
+     Kick [username] from channel (if you are operator or half operator). 
+     Request operator status for channels on my board or through netmail.
+	
+  /TOPIC [the new topic text]
+     ..................................................................
+     Change the channel topic 
+	
+  /ME [action text]
+     ..................................................................
+     Display action in chat. Example "/ME dances" will output: "Username
+     dances" in the action color.
+	
+  /AWAY [reason]
+     ..................................................................
+     Set AFK status. Reason is optional.
+	
+  /BACK 
+     ..................................................................
+     Return from AFK/Away
+	
+  /QUIT (alternative: /Q /EXIT)
+     ..................................................................
+     Exit iChat
+	
+  /HELP (alternative: /H)
+     ..................................................................
+     Show help
+	
+  **more to be included (any requests?)	
+
+  >> -----------------------------------------------------------------------
+
+  Script Arguments (optional):
+  ----------------------------
+	
+
+  /SERVER 
+     ..................................................................
+     iCHAT will by connect to the default configured server. By default this 
+     is the InterBBS #Trivia channel. If you wish to force iCHAT to use another
+     server and/or channel use the /SERVER argument and set the ID (number) of
+     the predefined irc server, channel and optional password in the 
+     configuration file.
+
+	For example:
+		/SERVER trivia
+		/SERVER theforze
+		/SERVER slackers
+
+
+  /PAGER
+     ..................................................................
+     ** BEFORE USING PAGER FUNCTIONALITY BE SURE TO REQUEST AN PRIVATE
+        CHANNEL, OR SET UP AN PRIVATE CHANNEL ON YOUR OWN IRC SERVER. 
+        WITHOUT AN PASSWORD PROTECTED PRIVATE CHANNEL YOU COULD BE 
+        IMPERSONATED. DO NOT USE PUBLIC CHANNELS!
+
+     By default iCHAT will to connect to the default channel without showing
+     a pager. To open the sysop pager before entering the private channel
+     use the /PAGER argument.
+
+     When the sysop (you) responds in the irc channel the iCHAT pager will
+     notice the response and open the  channel for the user to chat. This
+     is matched on sysop name, so again be sure to ONLY do this in a private
+     channel!
+
+     If iCHAT detects that the sysop (you) leaves the channel or sets an
+     away status the chat will close for the user. Closing the chat on sysop
+     leaving will only happen when in /PAGER mode of course.
+
+     To request a unlogged(!) private channel contact me at:
+
+	TheForze BBS:
+	    bbs.opicron.eu:23
+	    bbs.opicron.eu:22
+
+	Netmail [opicron]:
+            fsxnet 21:3/126
+	    araknet 10:104/4
+    
+  >> -----------------------------------------------------------------------
+      CHANGELOG
+  >> -----------------------------------------------------------------------
+
+
+   v3.1 Notes:
+	  - Various tweaks and release preparation, THANK YOU RAYZER for
+	    your endless testing and motivation!
+
+   v3.0 Notes:
+
+	  - [NOTE] WHEN UPGRADING FROM 2.x
+	           ADVICE: TRHOW AWAY OLD CONFIGURATION CONFIG.PY
+	           BUT IF YOU INSIST, BELOW STEPS
+
+		  * Copy custom options from config.py to custom.ini
+		  * Do not customize default.ini only custom.ini
+	
+	  - [ADD] Server connection string display
+	  - [ADD] Robust error catching
+	  - [ADD] Additional configuration options
+	  - [FIX] Avoid crash when SSL library could not be loaded
+	  - [FIX] Various stability improvements
+	  - [ADD] New configuration method, default.ini and custom.ini to override
+	  - [ADD] Support widescreen, requires Mystic 1.12a48+
+	          Examples:
+	          chat.ans
+	          chat.c132.ans
+	          chat.c160.ans
+	          chat.1.c160.ans (random)
+	          chat.2.c160.ans (random)
+	          default.ini
+	          default.c132.ini
+	          default.c160.ini
+	
+   v2.21 Notes:
+
+	  - [ADD] Topic truncate to 65 chars
+	  - [ADD] Configurable usertab toggle
+	
+   v2.20 Notes:
+
+	  - [!!!] NEW CONFIG FILE REQUIRED (lots of config changes)
+	  - [ADD] SSL support
+	  - [ADD] check user on kick/part/quit/join/ban
+	  - [FIX] removed pushover
+	  - [FIX] part channel/quit app in correctly
+	  - [FIX] reworked away status poll, no more flood kicks
+	  - [ADD] remember joined channels
+	  - [ADD] easily switch between joined channels
+	  - [ADD] ZNC support (server pass, autojoins)
+	  - [FIX] user name tab code cleanup
+	  - [FIX] tab completion
+	  - [ADD] remember user name when writing /R reply privmsgs
+	
+	   v2.15 Notes:
+
+	  - [ADD] /NAMES command to toggle name tab
+	  - [FIX] dont draw footer if nametab too long
+	  - [FIX] show correct localtime in pagers
+	  - [ADD] option to poll away status of users (set to False by default
+	          enable this option on irc channel with +/- 10 users to show
+			  live away status.
+	
+   v2.14 Notes:
+
+	  - [FIX] make sysop name for pager configurable
+	  - [FIX] remove trailing slash from pager notify
+	
+   v2.13 Notes:
+ 
+	  - [FIX] properly flush data (thanks CJ)
+	  - [FIX] empty keypress bug
+	  - [FIX] unable to use other servers than [0] or [1]
+	  - [FIX] /SERVER X command
+	
+   v2.12 Notes:
+
+	  - [FIX] two incorrect color conversions
+	  - [FIX] crash when incorrect irc code is received
+	
+   v2.11 Notes:
+
+	  * thanks to GngrDr3dM4n and 0zZ *
+	  - [FIX] when changing topic modt is shown
+	  - [FIX] crash on other iChat clients when converting MCI > IRC colors
+	  - [FIX] edge case crash on reading buffer size from socket
+	
+   v2.1 Notes:
+
+	  - [ADD] increase text prompt to 128 chars
+	  - [ADD] hide cursor during redraws
+	  - [ADD] move through text prompt left/right
+	  - [ADD] tab to complete names (rotates on last found)
+	  - [ADD] config options
+	  - [ADD] /r to reply to last private msg
+	  - [ADD] save private user name while using /r to avoid send to incorrect
+	  - [ADD] convert MCI colors to IRC colors
+	          recipient.
+	  - [ADD] codepage translations to ASCII
+	  - [ADD] draw prompt MCI codes on buffer scroll
+	  - [FIX] prompt draw improved and optimized for speed and functionality
+	          colors).
+	  - [FIX] use server defined channel names
+	  - [FIX] match user name capitalization on sending private message
+	
+	
+   v2.01 Notes:
+
+	  - [FIX] change ansi file to 23 rows to avoid scroll
+	  - [FIX] avoid redraw on each keypress
+	  - [FIX] add carriage return on chat key draw
+	
+   v2.0 Notes:
+
+	  - [!!!] FULL REINSTALL REQUIRED (major ANSI and CFG changes)
+	  - [ADD] prefix erroneous nicknames with underscore
+	  - [FIX] restore color after underscore in nicknames
+	  - [FIX] channels with one user would crash namelist -d0h-
+	  - [ADD] proper user name list poll
+	  - [ADD] channel switching
+	  - [FIX] further improve text prompt
+	
+   v1.9 Notes:
+
+	  - [ADD] use default values in case configuration is incorrect
+	  - [ADD] option to auto set capitol letter in text prompt
+	  - [FIX] improve text prompt
+	
+   v1.8a Notes:
+
+	  - [FIX] extended keys capture
+
+   v1.7 Notes:
+
+	  - [ADD] scroll chat logs with arrows
+	  - [ADD] scroll irc logs with page-up / page-down
+	  - [ADD] automatic name and away status collection
+	  - [ADD] improve error logging (trace)
+	  - [FIX] further improve cpu utilization in threads
+	  - [FIX] some small bugs and optimizations
+	
+   v1.6 Notes:
+
+	  - [FIX] optimize redraw of chat and name tab
+	  - [FIX] avoid overlap chat over name tab (avoids redraws)
+	  - [FIX] occasional wrong fg/bg color on split lines
+	
+   v1.5 Notes:
+
+	  - Refactor main listen thread
+	  - [ADD] toggle channel users tab
+	  - [ADD] keep track of away status
+	  - [FIX] high cpu usage fixed
+	  - [FIX] improved chat line splits
+	  
+   v1.4 Notes:
+
+	  - [ADD] Check irc nickname allready used, change nickname if in use
+	  - [FIX] Change timeout on connect to server, move timeout to main listen loop
+	  - [FIX] Significantly reduce CPU load by adding small timeout to chat thread
+	
+   v1.3 Notes:
+
+	  - [FIX] Add check to pushover calls
+
+   v1.2 Notes:
+
+	  - [FIX] Make pushover optional because of required python libraries
+
+   v1.1 Notes:
+
+	  - [ADD] error reporting in threads
+	  - [FIX] pager did not have delay between ticks
+	
+   v1.0 Notes:
+
+	  - Initial release
