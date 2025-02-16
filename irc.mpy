@@ -89,7 +89,7 @@ except NameError:
         defaultcfg_wide = SCRIPTDIR+'default.c'+str(x)+'.ini'
 
     if os.path.exists(SCRIPTDIR+'custom.c'+str(x)+'x'+str(y)+'.ini'):
-        defaultcfg_wide = SCRIPTDIR+'custom.c'+str(x)+'x'+str(y)+'.ini'
+        customcfg_wide = SCRIPTDIR+'custom.c'+str(x)+'x'+str(y)+'.ini'
     elif os.path.exists(SCRIPTDIR+'custom.c'+str(x)+'.ini'):
         customcfg_wide = SCRIPTDIR+'custom.c'+str(x)+'.ini'
     pass

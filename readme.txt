@@ -1,6 +1,6 @@
 
 ======================================================================================================
-## iCHAT v2.20 - open source MysticBBS IRC client 2021-2022
+## iCHAT v3.1 - open source MysticBBS IRC client 2021-2022
 ======================================================================================================
 
 https://github.com/opicron/mysticbbs-irc
@@ -19,6 +19,10 @@ For questions, private channels or operator status contact me:
 ======================================================================================================
 ## Changelog
 ======================================================================================================
+
+v3.1
+- [FIX] empty chat prompt caused error
+
 v2.20
 - [!!!] NEW CONFIG FILE REQUIRED (lots of config changes)
 - [ADD] SSL support
