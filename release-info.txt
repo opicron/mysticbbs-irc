@@ -78,7 +78,7 @@
   - Copy folder /irc/ to /mystic/themes/default/scripts/irc/ folder
 
   - UPGRADE FROM 2.x:
-        Advise: throw away old config.py but if you insist **
+        Throw away old config.py!!
 	Copy custom settings from config.py to custom.ini
 	in /mystic/themes/default/scripts/irc
 
@@ -252,6 +252,7 @@
    v3.1 Notes:
 	  - Various tweaks and release preparation, THANK YOU RAYZER for
 	    your endless testing and motivation!
+	  - [FIX] empty chat prompt caused error
 
    v3.0 Notes:
 
