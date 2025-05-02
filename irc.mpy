@@ -115,6 +115,7 @@ if customcfg_wide != None and customcfg != customcfg_wide:
 
 KEY_ESCAPE      = chr(27)
 KEY_ENTER       = chr(13)
+#KEY_CTRLQ       = chr(17)
 KEY_CTRLS       = chr(19)
 KEY_CTRLN       = chr(14)
 KEY_CTRLZ       = chr(26)
@@ -1661,7 +1662,7 @@ def thread_page(s,):
         if keypressed( ):
             key, extended = getkey( )
 
-            if key == KEY_ESCAPE:                    
+            if key == KEY_ESCAPE: 
                 self_stop = True
                 user_interrupt = True
                 stop_threads = True
